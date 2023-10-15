@@ -75,28 +75,9 @@ public class JeviLib : MelonMod
         Stopwatch sw = Stopwatch.StartNew();
         
 #if DEBUG
-        this.standardJevilTokens.Add(DebugDraw.Button("Remove JeviLib Debug tokens", GUIPosition.TOP_RIGHT, this.ClearStandardTokens));
-        this.standardJevilTokens.Add(DebugDraw.Button("Spawn cube", GUIPosition.TOP_LEFT, () => { this.tweenTarget = GameObject.CreatePrimitive(PrimitiveType.Cube); this.tweenTarget.GetComponent<Renderer>().material.shader = Shader.Find(Const.UrpLitName); }));
-        this.standardJevilTokens.Add(DebugDraw.Button("Pos -> V3.One", GUIPosition.TOP_LEFT, () => { this.tweenTarget.transform.TweenPosition(Vector3.one, 1); }));
-        this.standardJevilTokens.Add(DebugDraw.Button("Pos -> -V3.One", GUIPosition.TOP_LEFT, () => { this.tweenTarget.transform.TweenPosition(-Vector3.one, 1); }));
-        this.standardJevilTokens.Add(DebugDraw.Button("Scl -> V3.One", GUIPosition.TOP_LEFT, () => { this.tweenTarget.transform.TweenLocalScale(Vector3.one, 1); }));
-        this.standardJevilTokens.Add(DebugDraw.Button("Scl -> V3.Zero", GUIPosition.TOP_LEFT, () => { this.tweenTarget.transform.TweenLocalScale(Vector3.zero, 1); }));
-        this.standardJevilTokens.Add(DebugDraw.Button("Rot -> Euler(V3.Zero)", GUIPosition.TOP_LEFT, () => { this.tweenTarget.transform.TweenRotation(Quaternion.Euler(0, 0, 0), 1); }));
-        this.standardJevilTokens.Add(DebugDraw.Button("Rot -> Euler(0,180,0)", GUIPosition.TOP_LEFT, () => { this.tweenTarget.transform.TweenRotation(Quaternion.Euler(0, 180, 0), 1); }));
-        this.standardJevilTokens.Add(DebugDraw.Button("Test spawning", GUIPosition.TOP_LEFT, TestSpawning));
-        this.standardJevilTokens.Add(DebugDraw.Button("Test UniTask async", GUIPosition.TOP_LEFT, TestUniTaskAsync));
-        
-        this.standardJevilTokens.Add(DebugDraw.Button("PBM.CNSPU", GUIPosition.TOP_RIGHT, () => { PopupBoxManager.CreateNewShibePopup(); }));
-
-        for (int i = 0; i < paginateTokens.Length / 3; i++)
-        {
-            int _i = i;
-            paginateTokens[i * 3] = new GUIToken("Paginate", void () => paginates[_i] = !paginates[_i]);
-            paginateTokens[i * 3 + 1] = new GUIToken("Pg++", void () => pagination[_i]++);
-            paginateTokens[i * 3 + 2] = new GUIToken("Pg--", void () => pagination[_i]--);
-        }
-
         Stopwatch submoduleInitSW = Stopwatch.StartNew();
+
+        DebugDraw.InitTokens();
 #endif
 
         if (Utilities.IsPlatformQuest())
@@ -272,171 +253,7 @@ public class JeviLib : MelonMod
     /// </summary>
     public override void OnGUI()
     {
-        try
-        {
-            List<GUIToken> tokens = DebugDraw.GetTokens();
-
-            try
-            {
-                foreach (GUIToken tkn in tokens)
-                {
-                    try
-                    {
-                        if (tkn.type == GUIType.TRACKER) tkn.SetText(tkn.txtAlt + ": " + tkn.getter().ToString());
-                    }
-                    catch(Exception ex)
-                    {
-                        JeviLib.Error($"Exception while grabbing variable for IMGUI:\n\t\t{ex.GetType().FullName} '{ex.Message}'\n\t\t\t@ {ex.TargetSite.DeclaringType.FullName}.{ex.TargetSite.Name} (in {ex.Source})");
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                JeviLib.Error($"Exception while enumerating {nameof(GUIType)}.{GUIType.TRACKER} tokens. Are you calling DebugDraw in a variable checker?");
-                JeviLib.Error($"Exception information: Source = '{ex.Source}'; Exception = {ex}");
-            }
-
-            // assumed 12px for a button. default is 10 but im tryna make it a bit roomy
-            int pxForOneButton = (GuiGap * 2) + 15;
-            int drawnPerColumn = ((Screen.height - GuiCornerDist) / 2 / pxForOneButton) - 4;
-
-            // these are only being enumerated once, so keeping them in an IEnumerable instead of ToArraying isn't a concern
-            IEnumerable<GUIToken> topLeft = tokens.Where(t => t.position == GUIPosition.TOP_LEFT);
-            IEnumerable<GUIToken> topRight = tokens.Where(t => t.position == GUIPosition.TOP_RIGHT);
-            IEnumerable<GUIToken> bottomLeft = tokens.Where(t => t.position == GUIPosition.BOTTOM_LEFT);
-            IEnumerable<GUIToken> bottomRight = tokens.Where(t => t.position == GUIPosition.BOTTOM_RIGHT);
-
-            //if (paginate)
-            //{
-            //    topLeft = topLeft.Skip(pageIdx * drawnPerColumn).Take(drawnPerColumn);
-            //    topRight = topRight.Skip(pageIdx * drawnPerColumn).Take(drawnPerColumn);
-            //    bottomLeft = bottomLeft.Skip(pageIdx * drawnPerColumn).Take(drawnPerColumn);
-            //    bottomRight = bottomRight.Skip(pageIdx * drawnPerColumn).Take(drawnPerColumn - paginateTokens.Length).Prepend(paginateTokens);
-            //}
-            
-            // Draw top left
-            int screenCorner = 0;
-            int maxWidth = 0;
-            int xStart = GuiCornerDist;
-            int yStart = GuiCornerDist;
-            if (paginates[screenCorner])
-                topLeft = topLeft.Skip(pagination[screenCorner] * drawnPerColumn).Take(drawnPerColumn);
-            if (DebugDraw.IsActive) topLeft = paginateTokens.Skip(screenCorner * 3).Take(3).Concat(topLeft);
-            foreach (GUIToken token in topLeft)
-            {
-                if (maxWidth < token.width) maxWidth = token.width;
-                Rect rekt = new(xStart, yStart, maxWidth, token.height);
-                this.DrawToken(rekt, token);
-                yStart += token.height + GuiGap;
-                
-                if (yStart + token.height + GuiGap > Screen.height / 2)
-                {
-                    yStart = GuiCornerDist;
-                    xStart += maxWidth;
-                    maxWidth = 0;
-                }
-            }
-
-            // Draw top right
-            screenCorner++;
-            maxWidth = 0;
-            xStart = Screen.width - GuiCornerDist;
-            yStart = GuiCornerDist;
-            if (paginates[screenCorner])
-                topRight = topRight.Skip(pagination[screenCorner] * drawnPerColumn).Take(drawnPerColumn);
-            if (DebugDraw.IsActive) topRight = paginateTokens.Skip(screenCorner * 3).Take(3).Concat(topRight);
-            foreach (GUIToken token in topRight)
-            {
-                if (maxWidth < token.width) maxWidth = token.width;
-                Rect rekt = new(xStart - maxWidth, yStart, maxWidth, token.height);
-                this.DrawToken(rekt, token);
-                yStart += token.height + GuiGap;
-
-                if (yStart + token.height + GuiGap > Screen.height / 2)
-                {
-                    yStart = GuiCornerDist;
-                    xStart -= maxWidth;
-                    maxWidth = 0;
-                }
-            }
-
-            // Draw bottom left
-            screenCorner++;
-            maxWidth = 0;
-            xStart = GuiCornerDist;
-            yStart = Screen.height - GuiCornerDist;
-            if (paginates[screenCorner])
-                bottomLeft = bottomLeft.Skip(pagination[screenCorner] * drawnPerColumn).Take(drawnPerColumn);
-            if (DebugDraw.IsActive) bottomLeft = paginateTokens.Skip(screenCorner * 3).Take(3).Concat(bottomLeft);
-            foreach (GUIToken token in bottomLeft)
-            {
-                if (maxWidth < token.width) maxWidth = token.width;
-                Rect rekt = new(xStart, yStart - token.height, maxWidth, token.height);
-                this.DrawToken(rekt, token);
-                yStart -= token.height + GuiGap;
-
-                if (yStart - token.height - GuiGap < Screen.height / 2)
-                {
-                    yStart = Screen.height - GuiCornerDist;
-                    xStart += maxWidth;
-                    maxWidth = 0;
-                }
-            }
-
-            // Draw bottom right
-            screenCorner++;
-            maxWidth = 0;
-            xStart = Screen.width - GuiCornerDist;
-            yStart = Screen.height - GuiCornerDist;
-            if (paginates[screenCorner])
-                bottomRight = bottomRight.Skip(pagination[screenCorner] * drawnPerColumn).Take(drawnPerColumn);
-            if (DebugDraw.IsActive) bottomRight = paginateTokens.Skip(screenCorner * 3).Take(3).Concat(bottomRight);
-            foreach (GUIToken token in bottomRight)
-            {
-                if (maxWidth < token.width) maxWidth = token.width;
-                Rect rekt = new(xStart - maxWidth, yStart - token.height, maxWidth, token.height);
-                this.DrawToken(rekt, token);
-                yStart -= token.height + GuiGap;
-
-                if (yStart - token.height - GuiGap < Screen.height / 2)
-                {
-                    yStart = Screen.height - GuiCornerDist;
-                    xStart -= maxWidth;
-                    maxWidth = 0;
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Error($"Exception thrown while drawing IMGUI:\n\t{ex}");
-        }
-    }
-
-    private void DrawToken(Rect rect, GUIToken token)
-    {
-        switch (token.type)
-        {
-            case GUIType.TRACKER:
-            case GUIType.TEXT:
-                GUI.Box(rect, token.txt);
-                break;
-            case GUIType.BUTTON:
-                if (GUI.Button(rect, token.txt)) token.call();
-                break;
-            case GUIType.TEXT_BUTTON:
-                token.SetText(GUI.TextField(rect, token.txt));
-
-                Rect button = rect;
-                button.width = token.txtAlt.Length * 7f + 12f;
-                if (token.position == GUIPosition.TOP_LEFT || token.position == GUIPosition.BOTTOM_LEFT)
-                    button.x += rect.width + GuiGap;
-                else button.x -= + GuiGap + button.width;
-
-                if (GUI.Button(button, token.txtAlt)) token.callStr(token.txt);
-                break;
-            default:
-                break;
-        }
+        DebugDraw.PerformDraw();
     }
 #endif
 
@@ -542,38 +359,6 @@ public class JeviLib : MelonMod
     #endregion
 
 #if DEBUG
-    private void ClearStandardTokens()
-    {
-        foreach (GUIToken token in this.standardJevilTokens)
-        {
-            DebugDraw.Dont(token);
-        }
-
-        this.standardJevilTokens.Clear();
-    }
-
-    private void TestSpawning()
-    {
-        Barcodes.SpawnAsync(JevilBarcode.MP5, Vector3.zero, Quaternion.identity);
-    }
-
-    private async void TestUniTaskAsync()
-    {
-        Log("Waiting 2sec");
-        await UniTask.Delay(Il2CppSystem.TimeSpan.FromSeconds(2), DelayType.UnscaledDeltaTime, PlayerLoopTiming.Update, new Il2CppSystem.Threading.CancellationToken());
-        Log("Hello after waiting 2sec!");
-        Log("Are we still on the main thread?");
-        GameObject.CreatePrimitive(PrimitiveType.Cube);
-        Log("If we're still here, then YES we are on the main thread! UniTask and JeviLib did its job!");
-        Log("Testing UniTask patches. Waiting 3sec on each.");
-        await UniTask.Delay(3000, true);
-        Log("Check-in 1");
-        await UniTask.Delay(3000, DelayType.UnscaledDeltaTime);
-        Log("Check-in 2");
-        await UniTask.Delay(Il2CppSystem.TimeSpan.FromSeconds(3), true);
-        Log("Check-in 3! All checks passed!");
-    }
-
     private void NotifiedLowRAM()
     {
         JeviLib.Warn("BONELAB has been notified that your system has very little free RAM left! Double check that! Consider uninstalling some items!");
