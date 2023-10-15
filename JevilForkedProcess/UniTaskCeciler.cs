@@ -35,10 +35,10 @@ internal static class UniTaskCeciler
         Log("Backing up current UniTask.dll to " + backupFile);
         File.Copy(unitaskAsmPath, backupFile, true);
         Log("Successfully wrote UniTask.dll backup.");
-
+        
         // Added copious log statements
         Log("Creating memory stream for modified UniTask.dll");
-        using MemoryStream tempStream = new MemoryStream();
+        using MemoryStream tempStream = new();
         Log("Success!");
 
         Log("Reading UnhollowerBaseLib for type reference...");
@@ -101,10 +101,15 @@ internal static class UniTaskCeciler
         const string altMethodName = nameof(ICriticalNotifyCompletion.UnsafeOnCompleted);
 
         MethodDefinition uniTaskAwaiterOnCompletedGeneric = uniTaskAwaiterGeneric.Methods.FirstOrDefault(m => m.Name == unhollowedMethodName) ?? uniTaskAwaiterGeneric.Methods.First(m => m.Name == altMethodName);
+        Log(" - Found OnCompleted for the generic awaiter...");
         MethodDefinition uniTaskAwaiterOnCompletedUntyped = uniTaskAwaiterUntyped.Methods.FirstOrDefault(m => m.Name == unhollowedMethodName) ?? uniTaskAwaiterUntyped.Methods.First(m => m.Name == altMethodName);
+        Log(" - Found OnCompleted for the untyped awaiter...");
         MethodDefinition yieldAwaiterOnCompleted = yieldAwaiter.Methods.FirstOrDefault(m => m.Name == unhollowedMethodName) ?? yieldAwaiter.Methods.First(m => m.Name == altMethodName);
+        Log(" - Found OnCompleted for the yield awaiter...");
         MethodDefinition mainThreadOnCompleted = switchToMainThreadAwaiter.Methods.FirstOrDefault(m => m.Name == unhollowedMethodName) ?? switchToMainThreadAwaiter.Methods.First(m => m.Name == altMethodName);
+        Log(" - Found OnCompleted for the main thread awaiter...");
         MethodDefinition threadPoolOnCompleted = switchToThreadPoolAwaiter.Methods.FirstOrDefault(m => m.Name == unhollowedMethodName) ?? switchToThreadPoolAwaiter.Methods.First(m => m.Name == altMethodName);
+        Log(" - Found OnCompleted for the thread pool awaiter...");
         Log("Success!");
 
         // Clear previous runs

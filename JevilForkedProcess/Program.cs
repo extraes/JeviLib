@@ -86,7 +86,7 @@ internal class Program
 
     private static void ForkIfNeeded(string[] args)
     {
-        return;
+        //return;
 
         // Autofork if process is BONELAB
         Process me = Process.GetCurrentProcess();
