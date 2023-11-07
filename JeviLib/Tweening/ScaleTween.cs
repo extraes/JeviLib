@@ -12,7 +12,6 @@ namespace Jevil.Tweening;
 /// </summary>
 public sealed class ScaleTween : Tween<Vector3>
 {
-    private static (float, float) floatfloat = (0, 1); 
 
     internal ScaleTween(Transform transform, Vector3 target, float length) 
         : base(target,

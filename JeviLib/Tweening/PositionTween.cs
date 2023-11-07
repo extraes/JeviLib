@@ -17,8 +17,6 @@ public sealed class PositionTween : Tween<Vector3>
     /// </summary>
     public bool IsLocal { get; internal set; }
 
-    private static (float, float) floatfloat = (0, 1);
-
     internal PositionTween(Transform transform, Vector3 target, float length, bool isLocal)
         : base(target,
                length,

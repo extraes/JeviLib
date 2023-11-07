@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using UnityEngine;
 
 namespace Jevil.Tweening;
 
@@ -51,7 +52,8 @@ public sealed class GenericFloatTween : Tween<float>
     /// <param name="completion">How far along the tween is, from 0 to 1.</param>
     protected override void Update(float completion)
     {
-        float value = interpolator(completion);
-        setter(value);
+        float completionInterpolated = interpolator(completion);
+        float valueToSet = Mathf.Lerp(startValue, endValue, completionInterpolated);
+        setter(valueToSet);
     }
 }

@@ -17,8 +17,6 @@ public sealed class RotationTween : Tween<Quaternion>
     /// </summary>
     public bool IsLocal { get; internal set; }
 
-    private static (float, float) floatfloat = (0, 1);
-
     internal RotationTween(Transform transform, Quaternion target, float length, bool isLocal)
         : base(target,
                length,
