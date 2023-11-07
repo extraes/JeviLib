@@ -843,12 +843,52 @@ public static class Utilities
 
         return ret;
     }
+
     /// <summary>
+    /// Uses unsafe code to place a value in an array, "serializing" it.
+    /// <para>This will work with all pre-defined "blittable" types, like ints and floats, but may not work for Vectors when using different unhollowed assemblies.</para>
+    /// </summary>
+    public static unsafe void SerializeInPlace<T>(byte[] array, T value, int offset = 0) where T : unmanaged
+    {
+#if DEBUG
+        if (array.Length < offset + sizeof(T))
+            JeviLib.Warn($"Trying to serialize a {sizeof(T)}-length value into an array of length {array.Length} with a {offset}-byte offset... This will not end well!");
+#endif
+        fixed (byte* arrayPtr = array)
+        {
+            T* arrayAsArrayTPtr = (T*)(arrayPtr + offset);
+            *arrayAsArrayTPtr = value;
+        }
+    }
+
+    // theoretically the generic version would work fine with Vector3's but its better to be safe than sorry.
+    /// <summary>
+    /// Does what <see cref="Extensions.ToBytes(Vector3)"/> does, but for an array <i>you</i> give it.
+    /// </summary>
+    public static unsafe void SerializeInPlace(byte[] array, Vector3 value, int offset = 0)
+    {
+        fixed (byte* arrayPtr = array)
+        {
+            *(float*)arrayPtr = value.x;
+            *(float*)(arrayPtr + sizeof(float)) = value.y;
+            *(float*)(arrayPtr + sizeof(float) * 2) = value.z;
+        }
+    }
+
     /// <summary>
     /// Effectively shorthand for <c>IL2CPP.il2cpp_thread_attach(IL2CPP.il2cpp_domain_get());</c>
     /// </summary>
     public static void AttachIl2CppToThread()
     {
         IL2CPP.il2cpp_thread_attach(il2cppDomain);
+    }
+
+    /// <summary>
+    /// Determines whether OBS is running. Doesn't check to see if it's currently recording.
+    /// </summary>
+    /// <returns>Whether or not a process named 'obs64' was found on the computer, or <see langword="false"/> on Quest.</returns>
+    public static bool IsOBSRunning()
+    {
+        return !IsPlatformQuest() && Process.GetProcessesByName("obs64").Length != 0;
     }
 }
