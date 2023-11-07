@@ -37,6 +37,7 @@ public static class Utilities
     static Type inspectorManager;
 #endif
 
+    static IntPtr il2cppDomain = IL2CPP.il2cpp_domain_get(); // should just be thread agnostic
     static bool fusionLoaded = AppDomain.CurrentDomain.GetAssemblies().Any(asm => !asm.IsDynamic && asm.GetName().Name == "LabFusion");
     static bool? uniTasksNeedPatch;
     static bool? coroutinesNeedPatch;
@@ -841,5 +842,13 @@ public static class Utilities
         }
 
         return ret;
+    }
+    /// <summary>
+    /// <summary>
+    /// Effectively shorthand for <c>IL2CPP.il2cpp_thread_attach(IL2CPP.il2cpp_domain_get());</c>
+    /// </summary>
+    public static void AttachIl2CppToThread()
+    {
+        IL2CPP.il2cpp_thread_attach(il2cppDomain);
     }
 }

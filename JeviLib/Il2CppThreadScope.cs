@@ -10,12 +10,14 @@ using UnhollowerBaseLib;
 namespace Jevil;
 
 /// <summary>
+/// <para><b>It's recommended you use <see cref="Jevil.Patching.UngovernableAttribute"/></b> instead.</para>
 /// Makes IL2CPP aware of the current thread, (so it can GC on it?).
 /// <para>This allows you to call (thread-safe) IL2CPP methods from off-main threads.</para>
 /// <para><b>The code this is based off was found by Lakatrazz! I'm not <i>that</i> good!</b></para>
 /// <see href="https://github.com/djkaty/Il2CppInspector/issues/155#issuecomment-821991119"/>
 /// <see href="https://forum.unity.com/threads/when-are-callback-for-il2cpp_thread_attach-processed.1095472/"/>
 /// </summary>
+[Obsolete(nameof(Il2CppThreadScope) + " is no longer recommended. If calling allocating native methods from an async method, use [assembly: Ungovernable(...)]. If explicitly creating threads, just call IL2CPP.il2cpp_thread_attach(IL2CPP.il2cpp_domain_get()). It's not an expensive call.")]
 public class Il2CppThreadScope : IDisposable
 {
     [ThreadStatic] internal static int usesOfThisThreadInIl2Cpp;
