@@ -12,6 +12,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using UnhollowerRuntimeLib;
@@ -208,6 +209,10 @@ public static class Extensions
     /// <returns>A string containing the path to the Transform, like "/Sign example/Canvas/TextMeshPro" (this works with <see cref="GameObject.Find(string)"/>)</returns>
     public static string GetFullPath(this Transform t)
     {
+        // epick
+        if (t.INOC())
+            return "";
+
         StringBuilder sb = new();
         sb.Append('/');
         sb.Append(t.name);
@@ -227,6 +232,7 @@ public static class Extensions
     /// <returns>A byte representation of the Vector <paramref name="vec"/></returns>
     public static unsafe byte[] ToBytes(this Vector3 vec)
     {
+        // this is how BitConverter does it for floats. only difference is i also change where the pointer points.
         byte[] ret = new byte[Const.SizeV3];
 
         fixed(byte* arrayPtr = ret)
@@ -407,7 +413,7 @@ public static class Extensions
     }
 
     /// <summary>
-    /// Filters out <see langword="null"/>s from the given <paramref name="sequence"/> using the != operator, so it <i>should</i> also filter out garbage collected <see cref="UnityEngine.Object"/>s.
+    /// Filters out <see langword="null"/>s from the given <paramref name="sequence"/> using the != operator.
     /// </summary>
     /// <typeparam name="T">Any type.</typeparam>
     /// <param name="sequence"></param>
@@ -415,6 +421,17 @@ public static class Extensions
     public static IEnumerable<T> NoNull<T>(this IEnumerable<T> sequence)
     {
         return sequence.Where(o => o != null);
+    }
+
+    /// <summary>
+    /// Filters out <see langword="null"/>s from the given <paramref name="sequence"/> using <see cref="INOC(UnityEngine.Object)"/>.
+    /// </summary>
+    /// <typeparam name="T">Any unty type.</typeparam>
+    /// <param name="sequence"></param>
+    /// <returns></returns>
+    public static IEnumerable<T> NoUNull<T>(this IEnumerable<T> sequence) where T : UnityEngine.Object
+    {
+        return sequence.Where(o => !o.INOC());
     }
 
     /// <summary>
@@ -746,5 +763,66 @@ public static class Extensions
     {
         unityObj.hideFlags = hide ? HideFlags.DontUnloadUnusedAsset | HideFlags.HideAndDontSave : HideFlags.DontUnloadUnusedAsset;
         GameObject.DontDestroyOnLoad(unityObj);
+    }
+
+    /// <summary>
+    /// Shorthand for stream.Write(arr, 0, arr.Length)
+    /// </summary>
+    /// <param name="stream"></param>
+    /// <param name="arr"></param>
+    public static void Write(this System.IO.Stream stream, byte[] arr)
+    {
+        stream.Write(arr, 0, arr.Length);
+    }
+
+    /// <summary>
+    /// Shorthand for stream.WriteAsync(arr, 0, arr.Length)
+    /// </summary>
+    /// <param name="stream"></param>
+    /// <param name="arr"></param>
+    public static Task WriteAsync(this System.IO.Stream stream, byte[] arr)
+    {
+        return stream.WriteAsync(arr, 0, arr.Length);
+    }
+
+    /// <summary>
+    /// IndexOf. Uses .Equals, so you should <i>probably</i> double check to make sure your thing overrides it. Not a problem for Unity objects because you have JeviLib 👍
+    /// </summary>
+    /// <typeparam name="T">Any .Equals-overriding type.</typeparam>
+    /// <param name="enumerator">Any sequence of elements.</param>
+    /// <param name="value">Any value</param>
+    /// <returns>The index where the element was found, or -1 if it wasn't in the sequence.</returns>
+    public static int FindIndexOf<T>(this IEnumerable<T> enumerator, T value)
+    {
+        int idx = 0;
+        foreach (var item in enumerator)
+        {
+            if (value is null && item is null || item.Equals(value))
+                return idx;
+
+            idx++;
+        }
+        return -1;
+    }
+
+    /// <summary>
+    /// FindIndexOf, but you get to give it an <see cref="IEqualityComparer{T}"/>! That's right, citizen, <i>YOU</i> get to specify how the objects are compared! Rejoice!
+    /// </summary>
+    /// <typeparam name="T">Any .Equals-overriding type.</typeparam>
+    /// <param name="enumerator">Any sequence of elements.</param>
+    /// <param name="value">Any value</param>
+    /// <param name="comparer">The equality comparer </param>
+    /// <returns>The index where the element was found, or -1 if it wasn't in the sequence.</returns>
+    public static int FindIndexOf<T>(this IEnumerable<T> enumerator, T value, IEqualityComparer<T> comparer)
+    {
+        int idx = 0;
+        foreach (var item in enumerator)
+        {
+            if (comparer.Equals(item, value))
+                return idx;
+
+            idx++;
+        }
+        return -1;
     }
 }
