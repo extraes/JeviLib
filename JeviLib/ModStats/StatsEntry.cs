@@ -40,12 +40,12 @@ public static class StatsEntry
     public static async Task<bool> IncrementValueAsync(string categoryName, string entryName)
     {
         UnityWebRequest req;
-        using (Il2CppThreadScope scope = new())
-        {
-            string url = string.Format(ENTRY_TEMPLATE, categoryName, entryName, "Increment");
-            var handler = new DownloadHandlerBuffer();
-            req = new(url, "POST", handler, null);
-        }
+
+        Utilities.AttachIl2CppToThread();
+        string url = string.Format(ENTRY_TEMPLATE, categoryName, entryName, "Increment");
+        var handler = new DownloadHandlerBuffer();
+        req = new(url, "POST", handler, null);
+        
         await StatsCommon.SendAndWait(req);
 
 #if DEBUG
@@ -66,12 +66,12 @@ public static class StatsEntry
     public static async Task<bool> SetValueAsync(string categoryName, string entryName, long value)
     {
         UnityWebRequest req;
-        using (Il2CppThreadScope scope = new())
-        {
-            string url = string.Format(ENTRY_TEMPLATE, categoryName, entryName, "Set") + "?value=" + value;
-            var handler = new DownloadHandlerBuffer();
-            req = new(url, "POST", handler, null);
-        }
+        
+        Utilities.AttachIl2CppToThread();
+        string url = string.Format(ENTRY_TEMPLATE, categoryName, entryName, "Set") + "?value=" + value;
+        var handler = new DownloadHandlerBuffer();
+        req = new(url, "POST", handler, null);
+        
         await StatsCommon.SendAndWait(req);
 
 #if DEBUG
@@ -91,11 +91,11 @@ public static class StatsEntry
     public static async Task<long?> GetValueAsync(string categoryName, string entryName)
     {
         UnityWebRequest req;
-        using (Il2CppThreadScope scope = new())
-        {
-            string url = string.Format(ENTRY_TEMPLATE, categoryName, entryName, "Get");
-            req = UnityWebRequest.Get(url);
-        }
+        
+        Utilities.AttachIl2CppToThread();
+        string url = string.Format(ENTRY_TEMPLATE, categoryName, entryName, "Get");
+        req = UnityWebRequest.Get(url);
+        
         await StatsCommon.SendAndWait(req);
 
 #if DEBUG

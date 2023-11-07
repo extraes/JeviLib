@@ -39,11 +39,10 @@ public static class StatsAdmin
     public static async Task<Dictionary<string, long>> GetCategoryAsync(string categoryName, string pass)
     {
         UnityWebRequest req;
-        using (Il2CppThreadScope scope = new())
-        {
-            string url = string.Format(STATS_ADMIN_TEMPLATE, categoryName, "Get", pass);
-            req = UnityWebRequest.Get(url);
-        }
+        Utilities.AttachIl2CppToThread();
+        string url = string.Format(STATS_ADMIN_TEMPLATE, categoryName, "Get", pass);
+        req = UnityWebRequest.Get(url);
+    
         await StatsCommon.SendAndWait(req);
 
 #if DEBUG
@@ -69,11 +68,10 @@ public static class StatsAdmin
     public static async Task<bool> CreateCategoryAsync(string categoryName, string pass, long authorization)
     {
         UnityWebRequest req;
-        using (Il2CppThreadScope scope = new())
-        {
-            string url = string.Format(STATS_ADMIN_TEMPLATE, categoryName, "Create", pass) + "&bless=" + authorization;
-            req = UnityWebRequest.Post(url, "");
-        }
+        Utilities.AttachIl2CppToThread();
+        string url = string.Format(STATS_ADMIN_TEMPLATE, categoryName, "Create", pass) + "&bless=" + authorization;
+        req = UnityWebRequest.Post(url, "");
+    
         await StatsCommon.SendAndWait(req);
 
 #if DEBUG

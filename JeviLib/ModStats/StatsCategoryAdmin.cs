@@ -39,11 +39,10 @@ public static class StatsCategoryAdmin
     public static async Task<bool> CreateEntryAsync(string categoryName, string entryName, string pass)
     {
         UnityWebRequest req;
-        using (Il2CppThreadScope scope = new())
-        {
-            string url = string.Format(CATEGORY_ADMIN_TEMPLATE, categoryName, "Create", entryName, pass);
-            req = UnityWebRequest.Post(url, "");
-        }
+        Utilities.AttachIl2CppToThread();
+    string url = string.Format(CATEGORY_ADMIN_TEMPLATE, categoryName, "Create", entryName, pass);
+        req = UnityWebRequest.Post(url, "");
+        
         await StatsCommon.SendAndWait(req);
 
 #if DEBUG
@@ -64,11 +63,10 @@ public static class StatsCategoryAdmin
     public static async Task<bool> DeleteEntryAsync(string categoryName, string entryName, string pass)
     {
         UnityWebRequest req;
-        using (Il2CppThreadScope scope = new())
-        {
-            string url = string.Format(CATEGORY_ADMIN_TEMPLATE, categoryName, "Delete", entryName, pass);
-            req = UnityWebRequest.Delete(url);
-        }
+        Utilities.AttachIl2CppToThread();
+        string url = string.Format(CATEGORY_ADMIN_TEMPLATE, categoryName, "Delete", entryName, pass);
+        req = UnityWebRequest.Delete(url);
+        
         await StatsCommon.SendAndWait(req);
 
 #if DEBUG
