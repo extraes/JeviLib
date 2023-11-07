@@ -14,6 +14,11 @@ namespace Jevil;
 /// <typeparam name="T">Any component, can be injected or native to the IL2CPP domain.</typeparam>
 public static class Instances<T> where T : Component
 {
+    /// <summary>
+    /// Returns the most recently cached component. This may return null, but return a destroyed object.
+    /// </summary>
+    public static T MostRecentlyCached => mostRecent.INOC() ? null : mostRecent;
+    static T mostRecent;
     static bool triedAutocache = false;
     static bool isAutocaching = false;
     static readonly Dictionary<GameObject, T> cache = new(new UnityObjectComparer<GameObject>());
@@ -64,7 +69,8 @@ public static class Instances<T> where T : Component
         if (ret == null)
         {
             ret = go.AddComponent<T>();
-            cache.Add(go, ret);
+            cache[go] = ret;
+            mostRecent = ret;
         }
 
         return ret;
@@ -91,13 +97,19 @@ public static class Instances<T> where T : Component
     /// Gets the <typeparamref name="T"/> component on <typeparamref name="T"/>, first trying the cache, otherwise getting it via <see cref="GameObject.GetComponent{T}"/>.
     /// </summary>
     /// <param name="go">The <see cref="GameObject"/> to be checked for a component of type <typeparamref name="T"/>.</param>
-    /// <returns>The component, or <see langword="null"/> if it wasn't in the cache or </returns>
+    /// <returns>The component, or <see langword="null"/> if it wasn't on the object.</returns>
     public static T Get(GameObject go)
     {
         if (cache.TryGetValue(go, out T obj)) return obj;
 
         T val = go.GetComponent<T>();
-        if (val != null) cache[go] = val;
+        if (val != null)
+        {
+            cache[go] = val;
+            mostRecent = val;
+        }
+        
+
         return val;
     }
 
@@ -125,8 +137,8 @@ public static class Instances<T> where T : Component
     /// <summary>
     /// Finds the first Transform that is a parent of <paramref name="t"/> that has a component of the given type.
     /// </summary>
-    /// <param name="t"></param>
-    /// <returns></returns>
+    /// <param name="t">The transform down the hierarchy to look upwards from</param>
+    /// <returns>Whether any transform in the upward hierarchy has a <typeparamref name="T"/> component.</returns>
     public static Transform HasUpwards(Transform t)
     {
         bool has = Has(t.gameObject);
@@ -203,14 +215,20 @@ public static class Instances<T> where T : Component
         if (triedAutocache) return isAutocaching;
         triedAutocache = true;
 
+#if DEBUG
+        string asmName = typeof(T).Assembly.GetName().Name;
+        if (asmName.StartsWith("UnityEngine"))
+            JeviLib.Warn($"The component {typeof(T).FullName} from the engine assembly {asmName} is likely implemented exclusively in native code! It likely will not be able to be autocached as a result.");
+#endif
+
+        BindingFlags methodFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
         Type type = typeof(T);
-        MethodInfo patcho = type.GetMethod("Awake", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-        if (patcho == null) patcho = type.GetMethod("Start", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        MethodInfo patcho = type.GetMethod("Awake", methodFlags) ?? type.GetMethod("Start", methodFlags);
         if (patcho == null) return false;
 
         try
         {
-            Hook.OntoMethod(patcho, AutoCachePatch); // lets see if Hook is production ready
+            Hook.OntoMethod(patcho, AutoCachePatch);
 #if DEBUG
             JeviLib.Log($"Successfully hooked {type.Name}'s {patcho.Name}() method for autocaching.");
 #endif
@@ -232,5 +250,6 @@ public static class Instances<T> where T : Component
         JeviLib.Log($"Autocache for {typeof(T).Name} called, caching now.");
 #endif
         cache[instance.gameObject] = instance;
+        mostRecent = instance;
     }
 }
