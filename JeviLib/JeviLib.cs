@@ -9,10 +9,14 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using BoneLib;
+using BoneLib.BoneMenu;
+using BoneLib.BoneMenu.Elements;
 using BoneLib.RandomShit;
 using Cysharp.Threading.Tasks;
 using Jevil.IMGUI;
+using Jevil.Internal.Patching;
 using Jevil.Patching;
+using Jevil.PostProcessing;
 using Jevil.Prefs;
 using Jevil.Spawning;
 using Jevil.Tweening;
@@ -20,6 +24,8 @@ using MelonLoader;
 using MelonLoader.Assertions;
 using SLZ.Utilities;
 using UnityEngine;
+using UnityEngine.Profiling;
+using UnityEngine.Rendering;
 using UnityEngine.SceneManagement;
 
 namespace Jevil;
@@ -44,22 +50,7 @@ public class JeviLib : MelonMod
 
     static readonly ConcurrentQueue<string> toLog = new();
     static Stopwatch mainThreadInvokeTimer = new();
-
-#if DEBUG
-    private readonly int GuiGap = Utilities.IsPlatformQuest() ? 15 : 5;
-    private readonly int GuiCornerDist = Utilities.IsPlatformQuest() ? 350 : 20;
-
-
-    // 0     1
-    // 2     3
-    private int[] pagination = new int[4]; // TL, TR, BL, BR
-    private GUIToken[] paginateTokens = new GUIToken[12];
-    private bool[] paginates = new bool[] { true, true, true, true };
-    private int[] pageIdx = new int[4];
-
-    private GameObject tweenTarget;
-    private List<GUIToken> standardJevilTokens = new();
-#endif
+    static Task<string> nsCacheTask;
 
     /// <summary>
     /// Gets a value indicating whether the asynchronously built map of namespaces to assemblies is done being created.
@@ -87,14 +78,16 @@ public class JeviLib : MelonMod
 
         Barcodes.Init();
 
-        PlayerPrefsExceptionUses.Init();
+        PostProcessingManager.Init();
+
+        Ungovernable.Init();
 
 #if DEBUG
         submoduleInitSW.Stop();
         LoggerInstance.Msg(ConsoleColor.Blue, $"JeviLib submodules initialized in {submoduleInitSW.ElapsedMilliseconds}ms");
 #endif
 
-        Task.Run(this.GetNamespaces);
+        nsCacheTask = Task.Run(this.GetNamespaces);
 
         Hooking.OnLevelInitialized += (li) => { OnSceneWasInitialized(-1, li.barcode); };
 
@@ -115,6 +108,13 @@ public class JeviLib : MelonMod
         Log("You should only be using this build if you create code mods, and not if you simply use mods. Do not rely on the extra checks in this build, or require the use of a debug build for your production code.");
 #endif
 
+        if (!nsCacheTask.IsCompleted)
+            Log("Waiting for namespace assembly cache task to complete.");
+
+        string nsCacheLog = nsCacheTask.GetAwaiter().GetResult();
+
+        Log(nsCacheLog);
+
         try
         {
             AssemblyPatcher.Init();
@@ -125,14 +125,41 @@ public class JeviLib : MelonMod
             Error("Exception while initializing fixes: " + ex);
         }
 
+#if DEBUG
+        Log("Creating BoneMenu for jevil postprocess testing...");
+        var mcat = MenuManager.CreateCategory("Test Jevil PostFX (debug only)", Color.white);
+
+        foreach (Type postproc in typeof(SharedPostProcessingMaterials).GetNestedTypes())
+        {
+            Log("Creating FunctionElements for " + postproc.FullName);
+            foreach (MethodInfo method in postproc.GetMethods())
+            {
+                if (method.Name.Contains("able"))
+                    mcat.CreateFunctionElement(method.Name + " " + postproc.Name, Color.white, () => method.Invoke(null, Array.Empty<object>()));
+            }
+        }
+
+        SharedPostProcessingMaterials.Depth.DepthPow.SetOn(SharedPostProcessingMaterials.Depth.Material, 1);
+        SharedPostProcessingMaterials.Depth.DepthMult.SetOn(SharedPostProcessingMaterials.Depth.Material, 1);
+        SharedPostProcessingMaterials.Depth.UseColor.SetOn(SharedPostProcessingMaterials.Depth.Material, false);
+#endif
+
+        CreateNeverCancel();
+
+        LoggerInstance.Msg("Device memory statistics:");
+        LoggerInstance.Msg(" - Total memory: " + SystemInfo.systemMemorySize);
+        LoggerInstance.Msg(" - Used memory (will likely spike when game starts): " + Process.GetCurrentProcess().PeakWorkingSet64 / 1024 / 1024);
+        LoggerInstance.Msg(ConsoleColor.Blue, $"Completed initialization of {nameof(JeviLib)} v{JevilBuildInfo.VERSION}{(JevilBuildInfo.DEBUG ? " Debug" : "")} in {sw.ElapsedMilliseconds}ms");
+    }
+
+    private static void CreateNeverCancel()
+    {
         // Initialize NeverCollect/NeverCancel for generic Tweens
         GameObject go = new(nameof(NeverCollect));
         NeverCollect nc = go.AddComponent<NeverCollect>();
         go.Persist();
         nc.Persist();
         Instances.NeverCancel = go;
-
-        LoggerInstance.Msg(ConsoleColor.Blue, $"Completed initialization of {nameof(JeviLib)} v{JevilBuildInfo.VERSION}{(JevilBuildInfo.DEBUG ? " Debug" : "")} in {sw.ElapsedMilliseconds}ms");
     }
 
     /// <summary>
@@ -191,10 +218,12 @@ public class JeviLib : MelonMod
 #if DEBUG
         Log("Cleared instance caches!");
 
-        LemonAssert.IsFalse(Instances.NeverCancel == null, "Instances.NeverCancel == null <- should be FALSE at all times!");
-
         Stopwatch sw = Stopwatch.StartNew();
 #endif
+        // this should obviously never happen, but IL2CPP (and Unity 2021.3.5 i guess) is a whore that never stops sucking
+        if (Instances.NeverCancel.INOC())
+            CreateNeverCancel();
+
         // Grab the necessary references when the scene starts. 
         Instances.Player_BodyVitals =
             GameObject.FindObjectOfType<SLZ.VRMK.BodyVitals>();
@@ -250,6 +279,7 @@ public class JeviLib : MelonMod
 #if DEBUG
     /// <summary>
     /// Draw <see cref="GUIToken"/>s from <see cref="DebugDraw"/>.
+    /// <para>Only exists in debug builds.</para>
     /// </summary>
     public override void OnGUI()
     {
@@ -257,7 +287,7 @@ public class JeviLib : MelonMod
     }
 #endif
 
-    private async void GetNamespaces()
+    private async Task<string> GetNamespaces()
     {
         Log("Getting namespaces from assemblies now");
         Stopwatch sw = Stopwatch.StartNew();
@@ -285,10 +315,10 @@ public class JeviLib : MelonMod
         while (threads.Any(t => t.ThreadState != System.Threading.ThreadState.Stopped)) await Task.Yield();
 
         sw.Stop();
-        Log($"Cached all {namespaceAssemblies.Count} namespaces and their respective assemblies in {sw.ElapsedMilliseconds}ms");
 
         DoneMappingNamespacesToAssemblies = true;
         onNamespaceAssembliesCompleted.InvokeSafeParallel();
+        return $"Cached all {namespaceAssemblies.Count} namespaces and their respective assemblies in {sw.ElapsedMilliseconds}ms";
     }
 
     private void PopulateDictionary_ThreadStart(object obj) => this.PopulateDictionary((Assembly[])obj);
