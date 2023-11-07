@@ -23,7 +23,7 @@ public class CallToken
     public bool waitInRealtime = true;
 
     /// <summary>
-    /// Whether the waiter will be running in a Unity coroutine or if it'll be running in the Mono domain's C# thread pool.
+    /// Whether the waiter will be running in a Unity coroutine or if it'll be running in the Mono domain's thread pool.
     /// <para>If running on the thread pool, the waiter cannot use scaled time. That is, it will always be realtime, so it won't be hindered by Unity's main thread.</para>
     /// <para><see langword="true"/> if on thread pool, <see langword="false"/> if coroutine.</para>
     /// </summary>
@@ -41,7 +41,7 @@ public class CallToken
     }
 
     /// <summary>
-    /// Add another 
+    /// Add another call to be invoked at the same time.
     /// </summary>
     /// <param name="fun"></param>
     public void AddCall(Action fun) => call += fun;

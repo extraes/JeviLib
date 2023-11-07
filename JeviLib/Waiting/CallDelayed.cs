@@ -21,8 +21,8 @@ public static class CallDelayed
     /// </summary>
     /// <param name="fun">The Action to invoke when the waiter is finished.</param>
     /// <param name="time">The time, in seconds, to wait before execution.</param>
-    /// <param name="runAsync">Defaults to <see langword="false"/>, running in a coroutine. <see langword="true"/> to run from the thread pool, separately from the game, so it will run at the right time even if the game starts lagging.
-    /// <para>If you call any Unity methods from off the main thread it will immediately crash the game, and log statements may interrupt with in-progress log statements.</para>
+    /// <param name="runAsync">Defaults to <see langword="false"/>, meaning it'll run your action from a coroutine. Set to <see langword="true"/> to run from the thread pool, separately from the game's code, so it will run at the right time even if the game starts lagging.
+    /// <para>If you call any Unity methods from off the main thread it will immediately crash the game, and log statements may interrupt other in-progress log statements, causing one part of the log statement to have another log statement jammed in the middle.</para>
     /// </param>
     /// <returns>An instance of <see cref="CallToken"/>.</returns>
     public static CallToken CallAction(Action fun, float time, bool runAsync = false)
