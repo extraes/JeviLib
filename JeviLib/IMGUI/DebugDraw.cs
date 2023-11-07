@@ -348,7 +348,7 @@ public static class DebugDraw
         }
 
         
-        foreach (Type type in typeof(PostProcessingMaterials).GetNestedTypes())
+        foreach (Type type in typeof(SharedPostProcessingMaterials).GetNestedTypes())
         {
             MethodInfo enableMethod = type.GetMethod("Enable", Const.AllBindingFlags);
             MethodInfo disableMethod = type.GetMethod("Disable", Const.AllBindingFlags);
