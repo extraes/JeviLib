@@ -647,13 +647,14 @@ public static class Utilities
     }
 
     /// <summary>
-    /// Returns whether the package with the given ID <paramref name="appId"/> is installed on the given system.
+    /// Returns whether the package with the given ID <paramref name="appId"/> is installed on the given system. This is currently borked.
     /// </summary>
     /// <param name="appId">The package app ID. Usually looks something like "com.StressLevelZero.BONELAB"</param>
     /// <returns><see langword="true"/> if the package's "launch intents" were found (IDK, ask that guy from the Unity forums), <see langword="false"/> if it wasn't or if the current platform is not android.</returns>
     public static bool IsAndroidPackageInstalled(string appId)
     {
         if (!IsPlatformQuest()) return false;
+        throw new NotImplementedException();
 
         AndroidJavaClass up = new AndroidJavaClass("com.unity3d.player.UnityPlayer");
         AndroidJavaObject ca = up.GetStatic<AndroidJavaObject>("currentActivity");
