@@ -72,11 +72,28 @@ public readonly struct OneOf<TRes, TExc> where TExc : Exception
     internal OneOf(TExc exception)
     {
         this.result = default;
-        this.exception = exception;
+        this.exception = (TExc)exception;
     }
 
 #endif
 
+    // add methods to explicitly call in case people don't like using the implicit conversions
+    /// <summary>
+    /// Creates a successful <see cref="OneOf{TRes, TExc}"/> from a value.
+    /// </summary>
+    public static OneOf<TRes, TExc> FromSuccess(TRes result)
+    {
+        return result;
+    }
+
+    /// <summary>
+    /// Creates a failed <see cref="OneOf{TRes, TExc}"/> from an exception.
+    /// </summary>
+    public static OneOf<TRes, TExc> FromFailure(TExc ex)
+    {
+        return ex;
+    }
+    
     /// <summary>
     /// Retrieves the <see cref="Result"/> from <paramref name="o"/>.
     /// </summary>
@@ -101,7 +118,7 @@ public readonly struct OneOf<TRes, TExc> where TExc : Exception
 #if DEBUG
         return new OneOf<TRes, TExc>((TExc)exception, null);
 #else
-        return new OneOf<TRes, TExc>(exception);
+        return new OneOf<TRes, TExc>((TExc)exception);
 #endif
     }
 }

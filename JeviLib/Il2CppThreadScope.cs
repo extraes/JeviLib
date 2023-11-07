@@ -93,7 +93,7 @@ public class Il2CppThreadScope : IDisposable
 
     void Exit()
     {
-        ThisThreadNoLongerInUse();
+        //ThisThreadNoLongerInUse();
     }
 
     static void ThisThreadInUse()
