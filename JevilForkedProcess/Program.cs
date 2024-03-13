@@ -42,7 +42,8 @@ internal class Program
 
 
 #if DEBUG
-        if (!Debugger.IsAttached) Debugger.Launch();
+        // for whatever reason, THIS LINE causes ForkProcess.exe to get flagged by Windows Defender. fucking shitheads.
+        //if (!Debugger.IsAttached) Debugger.Launch();
 #endif
 
         string userDataFolder = string.Join(" ", args);
