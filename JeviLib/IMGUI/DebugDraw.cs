@@ -1,5 +1,4 @@
-﻿using BoneLib.RandomShit;
-using Cysharp.Threading.Tasks;
+﻿using Il2CppCysharp.Threading.Tasks;
 using Jevil.PostProcessing;
 using Jevil.Spawning;
 using Jevil.Tweening;
@@ -11,6 +10,10 @@ using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
 
+#if !SELFCONTAINED
+using BoneLib.RandomShit;
+#endif
+
 namespace Jevil.IMGUI;
 
 /// <summary>
@@ -21,7 +24,7 @@ public static class DebugDraw
 #if DEBUG
     internal static bool IsActive { get; private set; }
     private static readonly List<GUIToken> tokensActive = new();
-    private static readonly List<GUIToken> tokensInactive = new(1) 
+    private static readonly List<GUIToken> tokensInactive = new(1)
     { Button("Toggle JGUI", GUIPosition.TOP_RIGHT, () => Toggle()) };
 
 
@@ -68,7 +71,7 @@ public static class DebugDraw
     /// </example>
     public static GUIToken TrackVariable<T>(string varName, GUIPosition position, Func<T> getter)
     {
-        Func<object> boxedGetter = () => { return getter(); };
+        Func<object?> boxedGetter = () => { return getter(); };
         GUIToken ret = new(varName, boxedGetter);
 #if DEBUG
         ret.position = position;
@@ -90,7 +93,7 @@ public static class DebugDraw
 #if DEBUG
         ret.position = position;
         // dont draw buttons on quest
-        if (!Utilities.IsPlatformQuest()) 
+        if (!Utilities.IsPlatformQuest())
             tokensActive.Add(ret);
 #endif
         return ret;
@@ -121,7 +124,7 @@ public static class DebugDraw
     /// <param name="position">The position on screen to draw the IMGUI elements.</param>
     /// <param name="call">A delegate that will have the text in the text field passed into it when called.</param>
     /// <returns>A <see cref="GUIToken"/> that can be sent to <see cref="Dont(GUIToken)"/> if you no longer wish for it to be drawn.</returns>
-    public static GUIToken TextButton(string startingText, GUIPosition position, Action<string> call) 
+    public static GUIToken TextButton(string startingText, GUIPosition position, Action<string> call)
         => TextButton(startingText, "CALL", position, call);
 
     /// <summary>
@@ -166,11 +169,11 @@ public static class DebugDraw
                 {
                     try
                     {
-                        if (tkn.type == GUIType.TRACKER) tkn.SetText(tkn.txtAlt + ": " + tkn.getter().ToString());
+                        if (tkn.type == GUIType.TRACKER) tkn.SetText(tkn.txtAlt + ": " + (tkn.getter()?.ToString() ?? "null"));
                     }
                     catch (Exception ex)
                     {
-                        JeviLib.Error($"Exception while grabbing variable for IMGUI:\n\t\t{ex.GetType().FullName} '{ex.Message}'\n\t\t\t@ {ex.TargetSite.DeclaringType.FullName}.{ex.TargetSite.Name} (in {ex.Source})");
+                        JeviLib.Error($"Exception while grabbing variable for IMGUI:\n\t\t{ex.GetType().FullName} '{ex.Message}'\n\t\t\t@ {ex.TargetSite?.DeclaringType?.FullName ?? "??"}.{ex.TargetSite?.Name ?? "????"} (in {ex.Source})");
                     }
                 }
             }
@@ -290,6 +293,10 @@ public static class DebugDraw
                 }
             }
         }
+        catch (InvalidOperationException ioex)
+        {
+            JeviLib.Log($"InvalidOperationException thrown while drawing IMGUI, this was probably due to element(s) being added to/removed from the GUI:\n\t{ioex}");
+        }
         catch (Exception ex)
         {
             JeviLib.Error($"Exception thrown while drawing IMGUI:\n\t{ex}");
@@ -336,34 +343,38 @@ public static class DebugDraw
         standardJevilTokens.Add(Button("Rot -> Euler(0,180,0)", GUIPosition.TOP_LEFT, () => { tweenTarget.transform.TweenRotation(Quaternion.Euler(0, 180, 0), 1); }));
         standardJevilTokens.Add(Button("Test spawning", GUIPosition.TOP_LEFT, TestSpawning));
         standardJevilTokens.Add(Button("Test UniTask async", GUIPosition.TOP_LEFT, TestUniTaskAsync));
+        standardJevilTokens.Add(Button("Test Hooking", GUIPosition.TOP_LEFT, Internal.SelfTesting.Patching.Hook.RunTestHook));
+        standardJevilTokens.Add(Button("Test Redirect (skipping)", GUIPosition.TOP_LEFT, () => Internal.SelfTesting.Patching.Hook.RunTestRedirect(true)));
+        standardJevilTokens.Add(Button("Test Redirect (not skipping)", GUIPosition.TOP_LEFT, () => Internal.SelfTesting.Patching.Hook.RunTestRedirect(false)));
+        standardJevilTokens.Add(Button("Test Disable", GUIPosition.TOP_LEFT, Internal.SelfTesting.Patching.Hook.RunTestDisable));
+#if SELFCONTAINED
+        standardJevilTokens.Add(Button("hi :)", GUIPosition.TOP_RIGHT, () => { }));
+#else
         standardJevilTokens.Add(Button("PBM.CNSPU", GUIPosition.TOP_RIGHT, () => { PopupBoxManager.CreateNewShibePopup(); }));
+#endif
 
-            
+
         for (int i = 0; i < paginateTokens.Length / 3; i++)
         {
             int _i = i;
-            paginateTokens[i * 3] = new GUIToken("Paginate", void () => paginates[_i] = !paginates[_i]);
-            paginateTokens[i * 3 + 1] = new GUIToken("Pg++", void () => pagination[_i]++);
-            paginateTokens[i * 3 + 2] = new GUIToken("Pg--", void () => pagination[_i]--);
-        }
 
-        
-        foreach (Type type in typeof(SharedPostProcessingMaterials).GetNestedTypes())
-        {
-            MethodInfo enableMethod = type.GetMethod("Enable", Const.AllBindingFlags);
-            MethodInfo disableMethod = type.GetMethod("Disable", Const.AllBindingFlags);
 
-            if (enableMethod == null || disableMethod == null)
+            foreach (Type type in typeof(SharedPostProcessingMaterials).GetNestedTypes())
             {
-                JeviLib.Log($"PostProcessingMaterials JGUI mapping failure: {type.FullName} missing dis/enable method!");
-                continue;
+                MethodInfo? enableMethod = type.GetMethod("Enable", Const.AllBindingFlags);
+                MethodInfo? disableMethod = type.GetMethod("Disable", Const.AllBindingFlags);
+
+                if (enableMethod == null || disableMethod == null)
+                {
+                    JeviLib.Warn($"PostProcessingMaterials JGUI mapping failure: {type.FullName} missing dis/enable method!");
+                    continue;
+                }
+
+                Action enable = (Action)enableMethod.CreateDelegate(typeof(Action));
+                Action disable = (Action)disableMethod.CreateDelegate(typeof(Action));
+                standardJevilTokens.Add(Button("Enable FX: " + type.Name, GUIPosition.TOP_RIGHT, enable));
+                standardJevilTokens.Add(Button("Disable FX: " + type.Name, GUIPosition.TOP_RIGHT, disable));
             }
-
-            Action enable = (Action)enableMethod.CreateDelegate(typeof(Action));
-            Action disable = (Action)disableMethod.CreateDelegate(typeof(Action));
-            standardJevilTokens.Add(Button("Enable FX: " + type.Name, GUIPosition.TOP_RIGHT, enable));
-            standardJevilTokens.Add(Button("Disable FX: " + type.Name, GUIPosition.TOP_RIGHT, disable));
-
         }
     }
 
@@ -389,7 +400,7 @@ public static class DebugDraw
         await UniTask.Delay(Il2CppSystem.TimeSpan.FromSeconds(2), DelayType.UnscaledDeltaTime, PlayerLoopTiming.Update, new Il2CppSystem.Threading.CancellationToken());
         JeviLib.Log("Hello after waiting 2sec!");
         JeviLib.Log("Are we still on the main thread?");
-        GameObject.CreatePrimitive(PrimitiveType.Cube);
+        _ = GameObject.CreatePrimitive(PrimitiveType.Cube);
         JeviLib.Log("If we're still here, then YES we are on the main thread! UniTask and JeviLib did its job!");
         JeviLib.Log("Testing UniTask patches. Waiting 3sec on each.");
         await UniTask.Delay(3000, true);
