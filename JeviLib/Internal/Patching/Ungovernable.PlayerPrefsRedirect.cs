@@ -19,6 +19,9 @@ namespace Jevil.Internal.Patching
 
         private static void TranspilePlayerPrefs(Assembly asm)
         {
+#if DEBUG
+            JeviLib.Log($"Transpiling PlayerPrefs usages for {asm.FullName}");
+#endif
             int count = 0;
             try
             {
@@ -57,6 +60,9 @@ namespace Jevil.Internal.Patching
             }
 
 
+#if DEBUG
+            JeviLib.Log($"Done transpiling PlayerPrefs usages for {asm.FullName}");
+#endif
         }
 
         static IEnumerable<CodeInstruction> PlayerPrefsTranspiler(IEnumerable<CodeInstruction> instructions)

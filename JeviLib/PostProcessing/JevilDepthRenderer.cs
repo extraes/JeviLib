@@ -52,7 +52,9 @@ internal class JevilDepthRenderer : MonoBehaviour
         cmd.SetProjectionMatrix(Camera.main.projectionMatrix);
         cmd.DrawMesh(mf.sharedMesh, rend.transform.localToWorldMatrix, mat, rend.subMeshStartIndex, 0);
         ctx.ExecuteCommandBuffer(cmd);
+#if DEBUG
         Debug.Log("Drew jdr!");
+#endif
         //Blitter.BlitTexture(cmd)
     }
 }
