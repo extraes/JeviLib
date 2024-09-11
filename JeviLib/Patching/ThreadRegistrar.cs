@@ -7,7 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using HarmonyLib;
 using MelonLoader;
-using UnhollowerBaseLib;
+using Il2CppInterop.Runtime;
 using UnityEngine;
 
 namespace Jevil.Patching;

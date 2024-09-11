@@ -1,4 +1,4 @@
-﻿using Cysharp.Threading.Tasks;
+﻿using Il2CppCysharp.Threading.Tasks;
 using Il2CppSystem.Runtime.CompilerServices;
 using Il2CppSystem.Threading;
 using System;
@@ -149,7 +149,7 @@ public static class AsyncUtilities
     /// <returns>An awaitable <see cref="UniTask"/></returns>
     public static UniTask ToUniTask(AsyncOperation ao, PlayerLoopTiming timing = PlayerLoopTiming.Update)
     {
-        return UnityAsyncExtensions.ToUniTask(ao, null, timing, new CancellationToken());
+        return UnityAsyncExtensions.ToUniTask(ao, null, timing, new Il2CppSystem.Threading.CancellationToken());
     }
 
     /// <summary>
@@ -175,7 +175,7 @@ public static class AsyncUtilities
     /// </summary>
     /// <param name="taskReturner">Any parameterless method/lambda that returns an awaitable <see cref="Task{TResult}"/></param>
     /// <returns><see langword="null"/> if <c><see langword="await"/> <paramref name="taskReturner"/>();</c> was successful. An <see cref="Exception"/></returns>
-    public static async Task<Exception> WrapNoThrow(Func<Task> taskReturner)
+    public static async Task<Exception?> WrapNoThrow(Func<Task> taskReturner)
     {
         try
         {
@@ -195,7 +195,7 @@ public static class AsyncUtilities
     /// <param name="taskReturner">Any parameterless method/lambda that returns an awaitable <see cref="Task{TResult}"/></param>
     /// <param name="param1">Parameter to pass into <paramref name="taskReturner"/>.</param>
     /// <returns><see langword="null"/> if <c><see langword="await"/> <paramref name="taskReturner"/>();</c> was successful. An <see cref="Exception"/></returns>
-    public static async Task<Exception> WrapNoThrow<TParam1>(Func<TParam1, Task> taskReturner, TParam1 param1)
+    public static async Task<Exception?> WrapNoThrow<TParam1>(Func<TParam1, Task> taskReturner, TParam1 param1)
     {
         try
         {
@@ -216,7 +216,7 @@ public static class AsyncUtilities
     /// <param name="param1">Parameter to pass into <paramref name="taskReturner"/>.</param>
     /// <param name="param2">Parameter to pass into <paramref name="taskReturner"/>.</param>
     /// <returns><see langword="null"/> if <c><see langword="await"/> <paramref name="taskReturner"/>();</c> was successful. An <see cref="Exception"/></returns>
-    public static async Task<Exception> WrapNoThrow<TParam1, TParam2>(Func<TParam1, TParam2, Task> taskReturner, TParam1 param1, TParam2 param2)
+    public static async Task<Exception?> WrapNoThrow<TParam1, TParam2>(Func<TParam1, TParam2, Task> taskReturner, TParam1 param1, TParam2 param2)
     {
         try
         {
@@ -238,7 +238,7 @@ public static class AsyncUtilities
     /// <param name="param2">Parameter to pass into <paramref name="taskReturner"/>.</param>
     /// <param name="param3">Parameter to pass into <paramref name="taskReturner"/>.</param>
     /// <returns><see langword="null"/> if <c><see langword="await"/> <paramref name="taskReturner"/>();</c> was successful. An <see cref="Exception"/></returns>
-    public static async Task<Exception> WrapNoThrow<TParam1, TParam2, TParam3>(Func<TParam1, TParam2, TParam3, Task> taskReturner, TParam1 param1, TParam2 param2, TParam3 param3)
+    public static async Task<Exception?> WrapNoThrow<TParam1, TParam2, TParam3>(Func<TParam1, TParam2, TParam3, Task> taskReturner, TParam1 param1, TParam2 param2, TParam3 param3)
     {
         try
         {

@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using UnhollowerBaseLib;
 using UnityEngine;
 
 namespace Jevil.Tweening;
@@ -21,6 +20,9 @@ public static class Tweener
 
     internal static void UpdateAll()
     {
+        if (tweens.Count == 0)
+            return;
+
         for (int i = tweens.Count - 1; i >= 0; i--)
         {
             TweenBase tween = tweens[i];

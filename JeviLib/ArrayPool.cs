@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Diagnostics.Eventing.Reader;
 using System.Linq;
-using System.Runtime.Remoting.Metadata.W3cXsd2001;
 using System.Text;
 using System.Threading.Tasks;
 using Tomlet.Exceptions;
@@ -155,8 +154,13 @@ public static class ArrayPool<T>
     {
         public static readonly ArrayLengthComparer Instance = new();
 
-        public int Compare(T[] x, T[] y)
+        public int Compare(T[]? x, T[]? y)
         {
+            // copilot generated the null checks. idc.
+            if (x is null)
+                return y is null ? 0 : -1;
+            if (y is null)
+                return 1;
             return x.Length - y.Length;
         }
     }

@@ -1,10 +1,9 @@
 ﻿using Jevil;
-using BoneLib.Nullables;
 using System.Collections.Generic;
 using UnityEngine;
-using SLZ.Marrow.Data;
-using SLZ.Bonelab;
-using SLZ.Marrow.Pool;
+using Il2CppSLZ.Marrow.Data;
+using Il2CppSLZ.Bonelab;
+using Il2CppSLZ.Marrow.Pool;
 using System.Threading.Tasks;
 
 namespace Jevil.Spawning;
@@ -14,13 +13,13 @@ namespace Jevil.Spawning;
 /// </summary>
 public static class Ammo
 {
-    static readonly Dictionary<Weight, Spawnable> spawnableWeights = new(3);
+    static readonly Dictionary<Weight, JevilBarcode> spawnableWeights = new(3);
 
-    internal static void Init()
+    static Ammo()
     {
-        spawnableWeights[Weight.LIGHT] = Barcodes.ToSpawnable(JevilBarcode.AMMO_BOX_LIGHT);
-        spawnableWeights[Weight.MEDIUM] = Barcodes.ToSpawnable(JevilBarcode.AMMO_BOX_MEDIUM);
-        spawnableWeights[Weight.HEAVY] = Barcodes.ToSpawnable(JevilBarcode.AMMO_BOX_HEAVY);
+        spawnableWeights[Weight.LIGHT] = JevilBarcode.AMMO_BOX_LIGHT;
+        spawnableWeights[Weight.MEDIUM] = JevilBarcode.AMMO_BOX_MEDIUM;
+        spawnableWeights[Weight.HEAVY] = JevilBarcode.AMMO_BOX_HEAVY;
     }
 
     /// <summary>
@@ -42,10 +41,7 @@ public static class Ammo
     /// <returns>An inactive spawned ammo box.</returns>
     public static async Task<GameObject> Spawn(Weight ammoWgt, int ammoCount, Vector3 pos, Quaternion rot)
     {
-        if (!spawnableWeights.TryGetValue(ammoWgt, out var spawnable) || spawnable.WasCollected || spawnable == null) Init(); // yep
-
-
-        AssetPoolee spawnedAmmo = await NullableMethodExtensions.PoolManager_SpawnAsync(spawnableWeights[ammoWgt], pos, rot);
+        Poolee spawnedAmmo = await Barcodes.SpawnAsync(spawnableWeights[ammoWgt], pos, rot);
         AmmoPickup pickup = spawnedAmmo.GetComponentInChildren<AmmoPickup>();
         pickup.ammoCount = ammoCount;
         return spawnedAmmo.gameObject;

@@ -1,6 +1,5 @@
-﻿using Cysharp.Threading.Tasks;
+﻿using Il2CppCysharp.Threading.Tasks;
 using HarmonyLib;
-using Il2CppSystem.Threading;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -20,14 +19,14 @@ public static class AsyncExtensions
 {
 
     /// <summary>
-    /// Allows you to await a call to <see cref="AssetBundle.LoadFromMemoryAsync(UnhollowerBaseLib.Il2CppStructArray{byte})"/> or <see cref="AssetBundle.LoadFromFileAsync(string)"/>.
+    /// Allows you to await a call to <see cref="AssetBundle.LoadFromMemoryAsync(Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppStructArray{byte})"/> or <see cref="AssetBundle.LoadFromFileAsync(string)"/>.
     /// </summary>
     /// <param name="abcr">interior crocodile alligator i drive a chevrolet movie theater</param>
     /// <param name="timing">See: <see cref="PlayerLoopTiming"/></param>
     /// <returns>An awaitable <see cref="Task{TResult}"/></returns>
     public static async Task<AssetBundle> ToTask(this AssetBundleCreateRequest abcr, PlayerLoopTiming timing = PlayerLoopTiming.Update)
     {
-        await UnityAsyncExtensions.ToUniTask(abcr, null, timing, new CancellationToken());
+        await UnityAsyncExtensions.ToUniTask(abcr, null, timing, new Il2CppSystem.Threading.CancellationToken());
         return abcr.assetBundle;
     }
 
@@ -40,7 +39,7 @@ public static class AsyncExtensions
     /// <returns>An awaitable <see cref="UniTask"/></returns>
     public static UniTask ToUniTask(this AssetBundleRequest abr, PlayerLoopTiming timing = PlayerLoopTiming.Update)
     {
-        return UnityAsyncExtensions.ToUniTask(abr, null, timing, new CancellationToken());
+        return UnityAsyncExtensions.ToUniTask(abr, null, timing, new Il2CppSystem.Threading.CancellationToken());
     }
 
     /// <summary>
@@ -52,14 +51,17 @@ public static class AsyncExtensions
     public static async Task RunOnFinish(this Task awaited, Action runAfter)
     {
 #if DEBUG
-        MethodBase caller = null;
+        MethodBase? caller = null;
         StackTrace st = new(1);
 
         for (int i = 0; i < st.FrameCount; i++)
         {
-            MethodBase mb = st.GetFrame(i).GetMethod();
+            StackFrame? frame = st.GetFrame(i);
+            if (frame is null)
+                continue;
+            MethodBase? mb = frame.GetMethod();
 
-            if (mb != null && mb.DeclaringType.Assembly != typeof(object).Assembly && mb.DeclaringType != typeof(AsyncExtensions))
+            if (mb != null  && mb.DeclaringType != null && mb.DeclaringType.Assembly != typeof(object).Assembly && mb.DeclaringType != typeof(AsyncExtensions))
             {
                 caller = mb;
                 break;
@@ -90,14 +92,17 @@ public static class AsyncExtensions
     public static async Task RunOnFinish<T>(this Task<T> awaited, Action<T> runAfter)
     {
 #if DEBUG
-        MethodBase caller = null;
+        MethodBase? caller = null;
         StackTrace st = new(1);
 
         for (int i = 0; i < st.FrameCount; i++)
         {
-            MethodBase mb = st.GetFrame(i).GetMethod();
+            StackFrame? frame = st.GetFrame(i);
+            if (frame is null)
+                continue;
+            MethodBase? mb = frame.GetMethod();
 
-            if (mb != null && mb.DeclaringType.Assembly != typeof(object).Assembly && mb.DeclaringType != typeof(AsyncExtensions))
+            if (mb != null && mb.DeclaringType != null && mb.DeclaringType.Assembly != typeof(object).Assembly && mb.DeclaringType != typeof(AsyncExtensions))
             {
                 caller = mb;
                 break;

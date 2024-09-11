@@ -19,7 +19,7 @@ public class WaitFor : IEnumerator
     /// <summary>
     /// literally <see langword="null"/>
     /// </summary>
-    public object Current => null;
+    public object Current => null!;
 
     /// <summary>
     /// yeah basically

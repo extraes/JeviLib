@@ -12,7 +12,7 @@ namespace Jevil;
 /// In the event that you need something to be print-debugged with a line-by-line of where stuff went wrong, use this as a <see langword="using"/> variable.
 /// <para>Use <see cref="UpdateProgress(int)"/> to update progress, and <see cref="Success"/> if the instance you created is no longer needed.</para>
 /// </summary>
-public class DebugLineCounter : IDisposable
+public sealed class DebugLineCounter : IDisposable
 {
     /// <summary>
     /// The kind of <see cref="DebugLineCounter"/> made.
@@ -29,11 +29,13 @@ public class DebugLineCounter : IDisposable
         LINE_NUMBER
     }
 
-    MelonLogger.Instance logger;
-    string whatDoing;
+#if DEBUG
+    readonly MelonLogger.Instance logger;
+    readonly string whatDoing;
+    readonly Kind kind;
     bool success;
-    Kind kind;
     int num;
+#endif
 
     /// <summary>
     /// Creates a new line counter for debugging. Be sure to call <see cref="Success"/> when the thing you're tracking finishes successfully.
@@ -43,9 +45,11 @@ public class DebugLineCounter : IDisposable
     /// <param name="doingWhat">What are you trying to track? Will be used in the following format: <c>... unexpectedly erroring during {doingWhat}!...</c></param>
     public DebugLineCounter(MelonLogger.Instance logger, Kind kind, string doingWhat)
     {
+#if DEBUG
         this.logger = logger;
         this.kind = kind;
         this.whatDoing = doingWhat;
+#endif
     }
 
     /// <summary>
@@ -54,6 +58,7 @@ public class DebugLineCounter : IDisposable
     /// <param name="progressNum">If this is a checkpoint counter, this is unused. As a line number counter, the compiler will automatically place in the line where this was called from.</param>
     public void UpdateProgress([CallerLineNumber] int progressNum = -1)
     {
+#if DEBUG
         switch (kind)
         {
             case Kind.CHECKPOINT_COUNTER:
@@ -63,6 +68,7 @@ public class DebugLineCounter : IDisposable
                 num = progressNum;
                 break;
         }
+#endif
     }
 
     /// <summary>
@@ -70,7 +76,9 @@ public class DebugLineCounter : IDisposable
     /// </summary>
     public void Success()
     {
+#if DEBUG
         success = true;
+#endif
     }
 
     /// <summary>
@@ -78,6 +86,7 @@ public class DebugLineCounter : IDisposable
     /// </summary>
     public void Dispose()
     {
+#if DEBUG
         if (success) return;
 
         switch (kind)
@@ -91,5 +100,6 @@ public class DebugLineCounter : IDisposable
             default:
                 break;
         }
+#endif
     }
 }

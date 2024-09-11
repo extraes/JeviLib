@@ -1,4 +1,4 @@
-﻿using Cysharp.Threading.Tasks;
+﻿using Il2CppCysharp.Threading.Tasks;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -13,9 +13,9 @@ namespace Jevil.Internal.Stats;
 
 internal static class StatsCommon
 {
-    internal static async Task SendAndWait(UnityWebRequest request)
+    internal static UniTask SendAndWait(UnityWebRequest request)
     {
-        await AsyncUtilities.ToUniTask(request.SendWebRequest());
+        return AsyncUtilities.ToUniTask(request.SendWebRequest());
     }
 
 #if DEBUG

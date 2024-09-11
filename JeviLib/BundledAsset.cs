@@ -1,10 +1,10 @@
-﻿using Cysharp.Threading.Tasks;
+﻿using Il2CppCysharp.Threading.Tasks;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using UnhollowerRuntimeLib;
+using Il2CppInterop.Runtime;
 using UnityEngine;
 
 namespace Jevil;
@@ -14,7 +14,7 @@ namespace Jevil;
 /// <para>Using this class, your asset can be lazy-loaded, cached, loaded asynchronously, or loaded synchronously.</para>
 /// </summary>
 /// <typeparam name="T">Any unity object. Not recommended to be a component, but a <see cref="Material"/> or <see cref="GameObject"/> is fine.</typeparam>
-public class BundledAsset<T> where T : UnityEngine.Object
+public sealed class BundledAsset<T> where T : UnityEngine.Object
 {
 #if DEBUG
     static Dictionary<AssetBundle, string[]> assetPaths = new(UnityObjectComparer<AssetBundle>.Instance);
@@ -25,9 +25,9 @@ public class BundledAsset<T> where T : UnityEngine.Object
     /// </summary>
     public readonly string path;
 
-    AssetBundle bundle;
+    AssetBundle? bundle;
     readonly bool hide;
-    T asset;
+    T? asset;
 
     /// <summary>
     /// Creates a <see cref="BundledAsset{T}"/> reference and optionally immediately loads it.
@@ -159,7 +159,10 @@ public class BundledAsset<T> where T : UnityEngine.Object
 #if DEBUG
     string[] GetPaths()
     {
-        if (assetPaths.TryGetValue(bundle, out string[] paths)) return paths;
+        if (bundle.INOC())
+            throw new InvalidOperationException("AssetBundle is null! Cannot retrieve asset paths.");
+
+        if (assetPaths.TryGetValue(bundle, out string[]? paths)) return paths;
         {
             paths = bundle.GetAllAssetNames();
             assetPaths.Add(bundle, paths);

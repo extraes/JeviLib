@@ -1,30 +1,33 @@
-﻿using BoneLib;
-using BoneLib.RandomShit;
-using Cysharp.Threading.Tasks;
+﻿using Il2CppCysharp.Threading.Tasks;
 using HarmonyLib;
 using MelonLoader;
-using PuppetMasta;
-using SLZ.Interaction;
-using SLZ.Marrow.Pool;
-using SLZ.VRMK;
+using Il2CppPuppetMasta;
+using Il2CppSLZ.Interaction;
+using Il2CppSLZ.Marrow.Pool;
+using Il2CppSLZ.VRMK;
 using System;
-using System.Collections;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Diagnostics.Eventing.Reader;
-using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Reflection.Emit;
-using System.Runtime.CompilerServices;
-using System.Runtime.Remoting;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using UnhollowerBaseLib;
 using UnityEngine;
+using Il2CppInterop.Runtime;
+using System.Diagnostics;
+using Il2CppInterop.Runtime.InteropTypes.Arrays;
+using Il2CppSLZ.Marrow.PuppetMasta;
+using System.Collections.Concurrent;
+using Il2CppSLZ.Marrow;
+using Il2CppSystem.Net;
+using MelonLoader.Utils;
+
+
+#if !SELFCONTAINED
+using BoneLib;
+using BoneLib.RandomShit;
+#endif
 
 namespace Jevil;
 
@@ -34,9 +37,10 @@ namespace Jevil;
 public static class Utilities
 {
 #if DEBUG
-    static Type inspectorManager;
+    static Type? inspectorManager;
 #endif
 
+    static Func<string, bool> isPackageInstalled = _ => throw new PlatformNotSupportedException();
     static IntPtr il2cppDomain = IL2CPP.il2cpp_domain_get(); // should just be thread agnostic
     static bool fusionLoaded = AppDomain.CurrentDomain.GetAssemblies().Any(asm => !asm.IsDynamic && asm.GetName().Name == "LabFusion");
     static bool? uniTasksNeedPatch;
@@ -58,22 +62,41 @@ public static class Utilities
     public static Hand GetRandomPlayerHand()
     {
         int randomNum = UnityEngine.Random.Range(0, 2);
+#if SELFCONTAINED
         if (randomNum == 1)
-            return Player.leftHand;
+            return Instances.Player_PhysicsRig.leftHand;
         else
-            return Player.rightHand;
+            return Instances.Player_PhysicsRig.rightHand;
+#else
+        if (randomNum == 1)
+            return Player.LeftHand;
+        else
+            return Player.RightHand;
+#endif
     }
 
     /// <summary>
+#if SELFCONTAINED
+    /// This was version of JeviLib built with SELFCONTAINED. This method will throw an exception in debug builds unless <see cref="JeviLib.SelfContainedThrowNotImplemented"/>, otherwise an empty GameObject will be returned.
+#else
     /// Spawns a <see cref="BoneLib"/> Ad and then moves it in front of, and makes it face, the player.
+#endif
     /// </summary>
     /// <param name="str">The text to be displayed on the Ad.</param>
     /// <returns></returns>
     public static GameObject SpawnAd(string str)
     {
+#if SELFCONTAINED
+#if DEBUG
+        if (JeviLib.SelfContainedThrowNotImplemented)
+            throw new NotImplementedException();
+#endif
+        return new GameObject();
+#else
         GameObject ad = PopupBoxManager.CreateNewPopupBox(str);
         MoveAndFacePlayer(ad);
         return ad;
+#endif
     }
 
     /// <summary>
@@ -84,7 +107,7 @@ public static class Utilities
     public static IEnumerable<T> FindAll<T>() where T : UnityEngine.Object
     {
         // cannot use LINQ .Cast<T> as that does not use the IL2CPP Cast method
-        return GameObject.FindObjectsOfTypeAll(UnhollowerRuntimeLib.Il2CppType.Of<T>()).Select(obj => obj.Cast<T>());
+        return GameObject.FindObjectsOfTypeAll(Il2CppType.Of<T>()).Select(obj => obj.Cast<T>());
     }
 
     /// <summary>
@@ -168,7 +191,7 @@ public static class Utilities
     /// <param name="obj">The object to move and rotate</param>
     public static void MoveAndFacePlayer(GameObject obj)
     {
-        Transform phead = Player.playerHead;
+        Transform phead = Instances.Player_PhysicsRig.m_head;
         Vector3 position = phead.position + phead.forward.normalized * 2;
         Quaternion rotation = Quaternion.LookRotation(obj.transform.position - phead.position, Vector3.up);
         obj.transform.SetPositionAndRotation(position, rotation);
@@ -313,9 +336,14 @@ public static class Utilities
     {
         byte[] res = new byte[Const.SizeV3 * 2];
 
-        Vector3 inFrontOfPlayer = Player.playerHead.position + Player.playerHead.forward * 2;
+#if SELFCONTAINED
+        Transform playerHead = Instances.Player_PhysicsRig.m_head;
+#else
+        Transform playerHead = Player.Head;
+#endif
+        Vector3 inFrontOfPlayer = playerHead.position + playerHead.forward * 2;
         inFrontOfPlayer.ToBytes().CopyTo(res, 0);
-        Quaternion.LookRotation(-Player.playerHead.forward).eulerAngles.ToBytes().CopyTo(res, Const.SizeV3);
+        Quaternion.LookRotation(-playerHead.forward).eulerAngles.ToBytes().CopyTo(res, Const.SizeV3);
 
         return res;
     }
@@ -356,10 +384,10 @@ public static class Utilities
     /// Gets all rigidbodies from the given <paramref name="puppet"/>, using <see cref="PuppetMaster.muscles"/> and LINQ.
     /// </summary>
     /// <param name="puppet">The puppet to get muscles from.</param>
-    /// <returns>The rigidbodies of the muscles. I'm not sure if they're assured to be not <see langword="null"/>, so you may want to run </returns>
+    /// <returns>The rigidbodies of the muscles. I'm not sure if they're assured to be not <see langword="null"/>, so you may want to run <see cref="Extensions.NoNull{T}(IEnumerable{T})"/></returns>
     public static IEnumerable<Rigidbody> GetMuscleRigidbodies(PuppetMaster puppet)
     {
-        return puppet.muscles.Select(s => s.rigidbody);
+        return puppet.muscles.Select(s => s.marrowBody._rigidbody);
     }
 
     /// <summary>
@@ -369,22 +397,24 @@ public static class Utilities
     /// <param name="namezpaze">The name of the namespace, without a leading or trailing period.</param>
     /// <param name="clazz">The Type's name.</param>
     /// <returns>The <see cref="Type"/> represented by the combined namespace and class name, or <see langword="null"/> if it wasn't found.</returns>
-    public static Type GetTypeFromString(string namezpaze, string clazz)
+    public static Type? GetTypeFromString(string namezpaze, string clazz)
     {
 #if DEBUG
         if (!JeviLib.DoneMappingNamespacesToAssemblies) JeviLib.Log("Not done mapping namespaces to assemblies! Getting type from string may falsely return null!");
 #endif
 
-        if (JeviLib.namespaceAssemblies.TryGetValue(namezpaze, out ConcurrentBag<Assembly> asms))
+        if (JeviLib.namespaceAssemblies.TryGetValue(namezpaze, out ConcurrentBag<Assembly>? asms))
         {
 
 #if DEBUG
             JeviLib.Log($"Found the namespace '{namezpaze}' in {asms.Count} assemblies, attempting to find the type {clazz}");
 #endif
 
-            foreach (Assembly asm in asms)
+            foreach (Assembly? asm in asms)
             {
-                Type t = asm.GetType(namezpaze + "." + clazz);
+                if (asm is null)
+                    continue;
+                Type? t = asm.GetType(namezpaze + "." + clazz);
                 if (t != null) return t;
             }
 
@@ -401,14 +431,13 @@ public static class Utilities
     /// <summary>
     /// Get the <see cref="MethodInfo"/> behind any delegate. It can be a lambda or an actual method. See examples for examples.
     /// </summary>
-    /// <typeparam name="TDelegate">Any delegate type, can be an Action (returns nothing/void) or a Func (returns something).</typeparam>
     /// <param name="method">Any delegate, can be an Action (returns nothing/void) or a Func (returns something).</param>
     /// <returns>The underlying <see cref="MethodInfo"/>, gotten from <see cref="Delegate.Method"/>.</returns>
     /// <example>
     /// <c>AsInfo(MethodNameHere);</c> That's it.
     /// <c>AsInfo(() => { return "top 10 things to do in michigan\n1. leave"; });</c> That's it.
     /// </example>
-    public static MethodInfo AsInfo<TDelegate>(TDelegate method) where TDelegate : Delegate
+    public static MethodInfo AsInfo(Delegate method)
     {
         // this is a bit chickenshit i think
         // it feels too easy
@@ -418,10 +447,9 @@ public static class Utilities
     /// <summary>
     /// Creates a new harmony method from the delegate's MethodInfo.
     /// </summary>
-    /// <typeparam name="TDelegate">Any delegate type, can be Func or Action</typeparam>
     /// <param name="method">a method or delegate</param>
     /// <returns>A <see cref="HarmonyMethod"/> of the delegate.</returns>
-    public static HarmonyMethod ToHarmony<TDelegate>(TDelegate method) where TDelegate : Delegate
+    public static HarmonyMethod ToHarmony(Delegate method)
     {
         return AsInfo(method).ToNewHarmonyMethod();
     }
@@ -484,9 +512,9 @@ public static class Utilities
     {
 #if DEBUG
         inspectorManager ??= GetTypeFromString("UnityExplorer", "InspectorManager");
-        Type cobj = GetTypeFromString("UnityExplorer.CacheObject", "CacheObjectBase");
+        Type? cobj = GetTypeFromString("UnityExplorer.CacheObject", "CacheObjectBase");
         // public static void Inspect(object obj, CacheObjectBase sourceCache = null)
-        MethodInfo minf = inspectorManager?.GetMethod("Inspect", new Type[] { typeof(object), cobj });
+        MethodInfo? minf = inspectorManager?.GetMethod("Inspect", new Type[] { typeof(object), cobj });
         minf?.Invoke(null, new object[] { obj, null });
 #endif
     }
@@ -500,9 +528,8 @@ public static class Utilities
 #if DEBUG
         inspectorManager ??= GetTypeFromString("UnityExplorer", "InspectorManager");
         // public static void Inspect(object obj, CacheObjectBase sourceCache = null)
-        MethodInfo minf = inspectorManager?.GetMethod("Inspect", new Type[] { typeof(Type) });
+        MethodInfo? minf = inspectorManager?.GetMethod("Inspect", new Type[] { typeof(Type) });
         minf?.Invoke(null, new object[] { t });
-
 #endif
     }
 
@@ -514,7 +541,7 @@ public static class Utilities
     /// <param name="method">The method's name.</param>
     /// <param name="paramTypes">The names of types of the parameters. <i>Do NOT include the namespaces in the names.</i></param>
     /// <returns></returns>
-    public static MethodInfo GetMethodFromString(string namezpaze, string clazz, string method, string[] paramTypes = null)
+    public static MethodInfo? GetMethodFromString(string namezpaze, string clazz, string method, string[]? paramTypes = null)
     {
 #if DEBUG
         if (!JeviLib.DoneMappingNamespacesToAssemblies)
@@ -523,7 +550,7 @@ public static class Utilities
         }
 #endif
 
-        Type type = Utilities.GetTypeFromString(namezpaze, clazz);
+        Type? type = Utilities.GetTypeFromString(namezpaze, clazz);
         if (type == null)
         {
 #if DEBUG
@@ -532,7 +559,7 @@ public static class Utilities
             return null;
         }
 
-        MethodInfo minf = null;
+        MethodInfo? minf = null;
         if (paramTypes == null) minf = type.GetMethodEasy(method);
         else
         {
@@ -573,6 +600,10 @@ public static class Utilities
     /// <returns><see langword="true"/> if yielding always waits only one frame. <see langword="false"/> if yielding works as expected (e.g. if the support module has been replaced).</returns>
     public static bool CoroutinesNeedPatch()
     {
+#if NET5_0_OR_GREATER
+        return false;
+#endif
+
         // returns 
         if (coroutinesNeedPatch.HasValue) return coroutinesNeedPatch.Value;
         if (IsPlatformQuest())
@@ -594,15 +625,15 @@ public static class Utilities
     }
 
     /// <summary>
-    /// Returns whether a <see cref="Cysharp.Threading.Tasks.UniTask"/> can be <see langword="await"/>ed by mod code.
-    /// <br>JeviLib v1.2.0 restores <see langword="await"/> functionality on UniTasks by modifying ("patching") <see cref="Cysharp.Threading.Tasks.UniTask.Awaiter"/> and <see cref="Cysharp.Threading.Tasks.UniTask{T}.Awaiter"/> to make them implement INotifyCompletion.</br>
+    /// Returns whether a <see cref="Il2CppCysharp.Threading.Tasks.UniTask"/> can be <see langword="await"/>ed by mod code.
+    /// <br>JeviLib v1.2.0 restores <see langword="await"/> functionality on UniTasks by modifying ("patching") <see cref="Il2CppCysharp.Threading.Tasks.UniTask.Awaiter"/> and <see cref="Il2CppCysharp.Threading.Tasks.UniTask{T}.Awaiter"/> to make them implement INotifyCompletion.</br>
     /// </summary>
     /// <returns><see langword="true"/> if UniTasks are unable to be <see langword="await"/>ed by mod code. <see langword="false"/> if UniTask.dll has already been patched.</returns>
     public static bool UniTasksNeedPatch()
     {
         if (uniTasksNeedPatch.HasValue) return uniTasksNeedPatch.Value;
 
-        Type[] implementedInterfaces = typeof(Cysharp.Threading.Tasks.UniTask.Awaiter).GetInterfaces();
+        Type[] implementedInterfaces = typeof(UniTask.Awaiter).GetInterfaces();
         uniTasksNeedPatch = implementedInterfaces.Length == 0;
 #if DEBUG
         JeviLib.Log($"UniTask Awaiter implements {implementedInterfaces.Length} interfaces. Fix needs application? {uniTasksNeedPatch}");
@@ -628,7 +659,7 @@ public static class Utilities
             StartInfo = new ProcessStartInfo()
             {
                 FileName = Application.dataPath.Replace("_Data", ".exe"), // this path should only be hit on win, i think im good
-                WorkingDirectory = MelonUtils.BaseDirectory,
+                WorkingDirectory = MelonEnvironment.MelonBaseDirectory,
             },
         }.Start();
         Application.Quit();
@@ -647,26 +678,27 @@ public static class Utilities
     }
 
     /// <summary>
-    /// Returns whether the package with the given ID <paramref name="appId"/> is installed on the given system. This is currently borked.
+    /// Returns whether the package with the given ID <paramref name="bundleId"/> is installed on the given system. This is currently borked.
     /// </summary>
-    /// <param name="appId">The package app ID. Usually looks something like "com.StressLevelZero.BONELAB"</param>
+    /// <param name="bundleId">The package app ID. Usually looks something like "com.StressLevelZero.BONELAB"</param>
     /// <returns><see langword="true"/> if the package's "launch intents" were found (IDK, ask that guy from the Unity forums), <see langword="false"/> if it wasn't or if the current platform is not android.</returns>
-    public static bool IsAndroidPackageInstalled(string appId)
+    public static bool IsAndroidPackageInstalled(string bundleId)
     {
         if (!IsPlatformQuest()) return false;
+        return isPackageInstalled(bundleId);
+
         throw new NotImplementedException();
 
         AndroidJavaClass up = new AndroidJavaClass("com.unity3d.player.UnityPlayer");
         AndroidJavaObject ca = up.GetStatic<AndroidJavaObject>("currentActivity");
-        AndroidJavaObject packageManager = ca.Call<AndroidJavaObject>("getPackageManager", new UnhollowerBaseLib.Il2CppReferenceArray<Il2CppSystem.Object>(0));
+        //AndroidJavaObject packageManager = ca.Call<AndroidJavaObject, AndroidJavaObject>("getPackageManager");
         AndroidJavaObject launchIntent = null;
         //if the app is installed, no errors. Else, doesn't get past next line
         try
         {
             Il2CppReferenceArray<Il2CppSystem.Object> parameter = new(1);
-            parameter[0] = appId;
-            //object[] parameters = { appId };
-            launchIntent = packageManager.Call<AndroidJavaObject>("getLaunchIntentForPackage", parameter);
+            parameter[0] = bundleId;
+            //launchIntent = packageManager.Call<AndroidJavaObject, AndroidJavaObject``>("getLaunchIntentForPackage", parameter);
             //        
             //        ca.Call("startActivity",launchIntent);
         }
@@ -891,5 +923,115 @@ public static class Utilities
     public static bool IsOBSRunning()
     {
         return !IsPlatformQuest() && Process.GetProcessesByName("obs64").Length != 0;
+    }
+
+    #region Try
+
+    /// <summary>
+    /// Executes an action, catching any exceptions that may be thrown, returning it, or <see langword="null"/> if no exception was thrown.
+    /// </summary>
+    /// <param name="action">The action you want to safely run.</param>
+    /// <returns>The thrown exception, or <see langword="null"/> if execution completed.</returns>
+    public static Exception? Try(Action action)
+    {
+        try
+        {
+            action();
+            return null;
+        }
+        catch (Exception ex)
+        {
+            return ex;
+        }
+    }
+
+    /// <summary>
+    /// Executes an action, catching any exceptions that may be thrown, returning it, or <see langword="null"/> if no exception was thrown.
+    /// </summary>
+    /// <param name="action">The action you want to safely run.</param>
+    /// <param name="param1">The parameter to pass to the action.</param>
+    /// <returns>The thrown exception, or <see langword="null"/> if execution completed.</returns>
+    public static Exception? Try<T1>(Action<T1> action, T1 param1)
+    {
+        try
+        {
+            action(param1);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            return ex;
+        }
+    }
+
+    /// <summary>
+    /// Executes a function, catching any exceptions that may be thrown and returning it, or the result of successful execution.
+    /// </summary>
+    /// <param name="func">The function you want to safely run.</param>
+    /// <returns>A struct containing either the result of successful execution or the exception thrown.</returns>
+    public static OneOf<TRes, Exception> Try<TRes>(Func<TRes> func)
+    {
+        try
+        {
+            return func();
+        }
+        catch (Exception ex)
+        {
+            return ex;
+        }
+    }
+
+    /// <summary>
+    /// Executes a function, catching any exceptions that may be thrown and returning it, or the result of successful execution.
+    /// </summary>
+    /// <param name="func">The function you want to safely run.</param>
+    /// <param name="param1">The parameter to pass to the function.</param>
+    /// <returns>A struct containing either the result of successful execution or the exception thrown.</returns>
+    public static OneOf<TRes, Exception> Try<TRes, T1>(Func<T1, TRes> func, T1 param1)
+    {
+        try
+        {
+            return func(param1);
+        }
+        catch (Exception ex)
+        {
+            return ex;
+        }
+    }
+    #endregion
+
+    /// <summary>
+    /// Creates a valueless "nullable" for IL2CPP.
+    /// </summary>
+    public static Il2CppSystem.Nullable<T> NulledNullable<T>() where T : new()
+    {
+        Il2CppSystem.Nullable<T> nulled = new(default(T)!);
+        nulled.hasValue = false;
+        return nulled;
+    }
+
+    //public unsafe ModuleHandle GetModuleHandleFromPtr(IntPtr ptr)
+    //{
+    //    //ModuleHandle mod = new ModuleHandle();
+    //    //mod.MDStreamVersion
+    //}
+
+    public static Type GetTypeFromPtr(IntPtr ptr)
+    {
+        return Type.GetTypeFromHandle(GetRuntimeTypeHandleFromPtr(ptr));
+    }
+
+    public static unsafe RuntimeTypeHandle GetRuntimeTypeHandleFromPtr(IntPtr ptr)
+    {
+        var rth = new RuntimeTypeHandle();
+        *(IntPtr*)(&rth) = ptr;
+        return rth;
+    }
+
+    public static unsafe ModuleHandle GetModuleHandleFromPtr(IntPtr ptr)
+    {
+        var rth = new ModuleHandle();
+        *(IntPtr*)(&rth) = ptr;
+        return rth;
     }
 }

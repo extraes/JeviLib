@@ -1,0 +1,257 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{C33921DC-5778-4EEC-A2D0-E0AE522CC701}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>Jevil</RootNamespace>
+    <AssemblyName>JeviLib</AssemblyName>
+    <LangVersion>10</LangVersion>
+    <FileAlignment>512</FileAlignment>
+    <Deterministic>true</Deterministic>
+    <TargetFrameworkProfile />
+    <TargetFramework>net6.0</TargetFramework>
+    <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
+    <NeutralLanguage>en</NeutralLanguage>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>TRACE;DEBUG;JEVIL_MELONMOD, SELFCONTAINED</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <Prefer32Bit>false</Prefer32Bit>
+    <DocumentationFile>bin\Debug\JeviLib.xml</DocumentationFile>
+    <RegisterForComInterop>false</RegisterForComInterop>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE;JEVIL_MELONMOD</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <Prefer32Bit>false</Prefer32Bit>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Assembly-CSharp-firstpass, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\BONELAB\MelonLoader\Il2CppAssemblies\Assembly-CSharp-firstpass.dll</HintPath>
+    </Reference>
+    <Reference Include="BoneLib">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\BONELAB\Mods\BoneLib.dll</HintPath>
+    </Reference>
+    <Reference Include="Il2CppInterop.Common">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\BONELAB\MelonLoader\net6\Il2CppInterop.Common.dll</HintPath>
+    </Reference>
+    <Reference Include="Il2CppInterop.Runtime">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\BONELAB\MelonLoader\net6\Il2CppInterop.Runtime.dll</HintPath>
+    </Reference>
+    <Reference Include="Il2CppSystem, Version=4.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\BONELAB\MelonLoader\Il2CppAssemblies\Il2CppSystem.dll</HintPath>
+    </Reference>
+    <Reference Include="MelonLoader">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\BONELAB\MelonLoader\net6\MelonLoader.dll</HintPath>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\BONELAB\MelonLoader\net6\0Harmony.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="Mono.Cecil, Version=0.10.4.0, Culture=neutral, PublicKeyToken=50cebf1cceb9d05e, processorArchitecture=MSIL">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\BONELAB\MelonLoader\net6\Mono.Cecil.dll</HintPath>
+    </Reference>
+    <Reference Include="Mono.Cecil.Rocks, Version=0.10.4.0, Culture=neutral, PublicKeyToken=50cebf1cceb9d05e, processorArchitecture=MSIL">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\BONELAB\MelonLoader\net6\Mono.Cecil.Rocks.dll</HintPath>
+    </Reference>
+    <Reference Include="Oculus.Platform">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\BONELAB\MelonLoader\Il2CppAssemblies\Il2CppOculus.Platform.dll</HintPath>
+    </Reference>
+    <Reference Include="SLZ.Marrow">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\BONELAB\MelonLoader\Il2CppAssemblies\Il2CppSLZ.Marrow.dll</HintPath>
+    </Reference>
+    <Reference Include="SLZ.Serialize">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\BONELAB\MelonLoader\Il2CppAssemblies\Il2CppSLZ.Serialize.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.ComponentModel.Composition" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Drawing.Primitives, Version=4.0.1.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Drawing.Primitives.4.3.0\lib\net45\System.Drawing.Primitives.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Runtime, Version=4.1.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Runtime.4.1.1\lib\net462\System.Runtime.dll</HintPath>
+    </Reference>
+    <Reference Include="Tomlet">
+      <HintPath>C:\Program Files (x86)\Steam\steamapps\common\BONELAB\MelonLoader\net6\Tomlet.dll</HintPath>
+    </Reference>
+    <Reference Include="Assembly-CSharp">
+      <HintPath>C:\Program Files (x86)\Steam\steamapps\common\BONELAB\MelonLoader\Il2CppAssemblies\Assembly-CSharp.dll</HintPath>
+    </Reference>
+    <Reference Include="UniTask">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\BONELAB\MelonLoader\Il2CppAssemblies\Il2CppUniTask.dll</HintPath>
+    </Reference>
+    <Reference Include="UniTask.Addressables">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\BONELAB\MelonLoader\Il2CppAssemblies\Il2CppUniTask.Addressables.dll</HintPath>
+    </Reference>
+    <Reference Include="UniTask.Linq">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\BONELAB\MelonLoader\Il2CppAssemblies\Il2CppUniTask.Linq.dll</HintPath>
+    </Reference>
+    <Reference Include="Unity.Addressables">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\BONELAB\MelonLoader\Il2CppAssemblies\Unity.Addressables.dll</HintPath>
+    </Reference>
+    <Reference Include="Unity.RenderPipelines.Core.Runtime, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\BONELAB\MelonLoader\Il2CppAssemblies\Unity.RenderPipelines.Core.Runtime.dll</HintPath>
+    </Reference>
+    <Reference Include="Unity.RenderPipelines.Universal.Runtime, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\BONELAB\MelonLoader\Il2CppAssemblies\Unity.RenderPipelines.Universal.Runtime.dll</HintPath>
+    </Reference>
+    <Reference Include="Unity.ResourceManager, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\BONELAB\MelonLoader\Il2CppAssemblies\Unity.ResourceManager.dll</HintPath>
+    </Reference>
+    <Reference Include="Unity.XR.Oculus">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\BONELAB\MelonLoader\Il2CppAssemblies\Unity.XR.Oculus.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.AndroidJNIModule">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\BONELAB\MelonLoader\Il2CppAssemblies\UnityEngine.AndroidJNIModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.AssetBundleModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\BONELAB\MelonLoader\Il2CppAssemblies\UnityEngine.AssetBundleModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.AudioModule">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\BONELAB\MelonLoader\Il2CppAssemblies\UnityEngine.AudioModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>C:\Program Files (x86)\Steam\steamapps\common\BONELAB\MelonLoader\Il2CppAssemblies\UnityEngine.CoreModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.IMGUIModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\BONELAB\MelonLoader\Il2CppAssemblies\UnityEngine.IMGUIModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.PhysicsModule">
+      <HintPath>C:\Program Files (x86)\Steam\steamapps\common\BONELAB\MelonLoader\Il2CppAssemblies\UnityEngine.PhysicsModule.dll</HintPath>
+    </Reference>
+    <Reference Include="Il2cppmscorlib">
+      <HintPath>C:\Program Files (x86)\Steam\steamapps\common\BONELAB\MelonLoader\Il2CppAssemblies\Il2cppmscorlib.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.UnityWebRequestModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\BONELAB\MelonLoader\Il2CppAssemblies\UnityEngine.UnityWebRequestModule.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="ActionExtensions.cs" />
+    <Compile Include="ByteArrayPool.cs" />
+    <Compile Include="ArrayPool.cs" />
+    <Compile Include="AsyncExtensions.cs" />
+    <Compile Include="AsyncUtilities.cs" />
+    <Compile Include="BundledAsset.cs" />
+    <Compile Include="DebugLineCounter.cs" />
+    <Compile Include="Exceptions.cs" />
+    <Compile Include="GlobalSuppressions.cs" />
+    <Compile Include="Il2CppThreadScope.cs" />
+    <Compile Include="Internal\Patching\Ungovernable.AsyncThreadAttach.cs" />
+    <Compile Include="Internal\Patching\Ungovernable.cs" />
+    <Compile Include="Internal\Patching\Ungovernable.PlayerPrefsRedirect.cs" />
+    <Compile Include="Internal\Stats\StatsCommon.cs" />
+    <Compile Include="Internal\Utilities\ObjectDumper.cs" />
+    <Compile Include="JevilBuildInfo.cs" />
+    <Compile Include="JeviLib.cs" />
+    <Compile Include="ModStats\StatsAdmin.cs" />
+    <Compile Include="ModStats\StatsCategoryAdmin.cs" />
+    <Compile Include="ModStats\StatsEntry.cs" />
+    <Compile Include="Patching\AssemblyPatcher.cs" />
+    <Compile Include="Patching\PlayerPrefsReplacements.cs" />
+    <Compile Include="Patching\ThreadRegistrar.cs" />
+    <Compile Include="Patching\UngovernableAttribute.cs" />
+    <Compile Include="Patching\UngovernableType.cs" />
+    <Compile Include="PostProcessing\GlobalTextureDescriptor.cs" />
+    <Compile Include="PostProcessing\JevilDepthRenderer.cs" />
+    <Compile Include="PostProcessing\PostProcessingInternal.cs" />
+    <Compile Include="PostProcessing\PostProcessingManager.cs" />
+    <Compile Include="PostProcessing\RenderVisibilityTracker.cs" />
+    <Compile Include="PostProcessing\SharedPostProcessingMaterials.cs" />
+    <Compile Include="PostProcessing\ShaderProperty.cs" />
+    <Compile Include="Prefs\PrefWatch.cs" />
+    <Compile Include="ProfilingScope.cs" />
+    <Compile Include="OneOf.cs" />
+    <Compile Include="Patching\FixSocketAsyncEventArgs.cs" />
+    <Compile Include="Patching\QuestEnumeratorRewrapper.cs" />
+    <Compile Include="Patching\UniTasks.cs" />
+    <Compile Include="Patching\AndroidAsyncUnfucker.cs" />
+    <Compile Include="Prefs\PreferencesRegisterChildren.cs" />
+    <Compile Include="Prefs\PreferencesFile.cs" />
+    <Compile Include="Spawning\Barcodes.cs" />
+    <Compile Include="Spawning\JevilBarcode.cs" />
+    <Compile Include="UnityObjectComparer.cs" />
+    <Compile Include="IMGUI\DebugDraw.cs" />
+    <Compile Include="IMGUI\GUIPosition.cs" />
+    <Compile Include="IMGUI\GUIType.cs" />
+    <Compile Include="IMGUI\GUIToken.cs" />
+    <Compile Include="InstancesGeneric.cs" />
+    <Compile Include="CompilerServices.cs" />
+    <Compile Include="Const.cs" />
+    <Compile Include="NeverCollect.cs" />
+    <Compile Include="Patching\CMaps.cs" />
+    <Compile Include="Patching\DynTools.cs" />
+    <Compile Include="Patching\Disable.cs" />
+    <Compile Include="Patching\Hook.cs" />
+    <Compile Include="Patching\Redirect.cs" />
+    <Compile Include="..\JevilForkedProcess\UniTaskCeciler.cs" Link="Patching\UniTaskCeciler.cs" />
+    <Compile Include="..\JevilForkedProcess\UnityCoreModuleCeciler.cs" Link="Patching\UnityCoreModuleCeciler.cs" />
+    <Compile Include="Prefs\UnityDefaultColor.cs" />
+    <Compile Include="Prefs\Pref.cs" />
+    <Compile Include="Prefs\PrefEntries.cs" />
+    <Compile Include="Prefs\Preferences.cs" />
+    <Compile Include="Prefs\PreferencesColor.cs" />
+    <Compile Include="Prefs\PrefsInternal.cs" />
+    <Compile Include="Prefs\RangePref.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Extensions.cs" />
+    <Compile Include="Instances.cs" />
+    <Compile Include="Spawning\Ammo.cs" />
+    <Compile Include="Tweening\AudioTween.cs" />
+    <Compile Include="Tweening\GenericFloatTween.cs" />
+    <Compile Include="Tweening\GenericTween.cs" />
+    <Compile Include="Tweening\RotationTween.cs" />
+    <Compile Include="Tweening\Tween.cs" />
+    <Compile Include="Tweening\TweenBase.cs" />
+    <Compile Include="Tweening\Tweener.cs" />
+    <Compile Include="Tweening\TweenExtensions.cs" />
+    <Compile Include="Tweening\ScaleTween.cs" />
+    <Compile Include="Tweening\TweenTweenExtensions.cs" />
+    <Compile Include="Tweening\PositionTween.cs" />
+    <Compile Include="Unsafe\GlobalGameManagers.cs" />
+    <Compile Include="Unsafe\GlobalGameManagers.ManagerIndex.cs" />
+    <Compile Include="Utilities.cs" />
+    <Compile Include="Waiting\CancelCallToken.cs" />
+    <Compile Include="Waiting\CallDelayed.cs" />
+    <Compile Include="Waiting\WaitSecondsReal.cs" />
+    <Compile Include="Waiting\WaitSeconds.cs" />
+    <Compile Include="Waiting\WaitForSceneInit.cs" />
+    <Compile Include="Waiting\WaitDuring.cs" />
+    <Compile Include="Waiting\WaitFor.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <!--<Analyzer Include="..\..\..\..\..\..\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\Extensions\Microsoft\Visual Studio Tools for Unity\Analyzers\Microsoft.Unity.Analyzers.dll" />-->
+    <Analyzer Include="..\packages\StyleCop.Analyzers.Unstable.1.2.0.435\analyzers\dotnet\cs\StyleCop.Analyzers.CodeFixes.dll" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+    <EmbeddedResource Include="Resources\PostProcessing.bundle" />
+    <EmbeddedResource Include="Resources\PostProcessingQuest.bundle" />
+    <None Include="Unsafe\GameManagerTypeDefinitions.md" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\EnemyConfigs.bundle" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup>
+    <PostBuildEvent>COPY "$(TargetPath)" "C:\Program Files (x86)\Steam\steamapps\common\BONELAB\Mods"
+COPY "$(TargetDir)\JeviLib.xml" "C:\Program Files (x86)\Steam\steamapps\common\BONELAB\Mods"</PostBuildEvent>
+  </PropertyGroup>
+</Project>

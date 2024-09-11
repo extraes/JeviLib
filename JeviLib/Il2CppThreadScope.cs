@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using UnhollowerBaseLib;
+using Il2CppInterop.Runtime;
 
 namespace Jevil;
 
@@ -61,7 +61,7 @@ public class Il2CppThreadScope : IDisposable
     public async Task<T> Await<T>(Task<T> task)
     {
 #if DEBUG
-        if (startingThread != managedThreadId.Value) throw new ThreadStateException("Il2CppThreadScope should stay on the same thread! This may be due to something being 'await'ed without using Il2CppThreadScope.Await.");
+        if (startingThread != managedThreadId) throw new ThreadStateException("Il2CppThreadScope should stay on the same thread! This may be due to something being 'await'ed without using Il2CppThreadScope.Await.");
 #endif
 
         Exit();
@@ -89,7 +89,7 @@ public class Il2CppThreadScope : IDisposable
     {
         ThisThreadInUse();
         // micro-optimization: avoid calling extern (possibly expensive) getters get_CurrentThread and get_ManagedThreadId
-        managedThreadId ??= Thread.CurrentThread.ManagedThreadId;
+        managedThreadId ??= Environment.CurrentManagedThreadId;
         startingThread = managedThreadId.Value;
     }
 

@@ -1,4 +1,5 @@
 ﻿using MelonLoader;
+using MelonLoader.Utils;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -18,7 +19,7 @@ internal static class AssemblyPatcher
         if (Utilities.IsPlatformQuest())
         {
             PersistentFixQuest();
-
+            
             if (Utilities.CoroutinesNeedPatch() || Utilities.UniTasksNeedPatch())
                 OneTimeFixQuest();
         }
@@ -32,7 +33,7 @@ internal static class AssemblyPatcher
     {
         try
         {
-            QuestEnumeratorRewrapper.Init();
+            //QuestEnumeratorRewrapper.Init();
         }
         catch (Exception ex)
         {
@@ -46,12 +47,12 @@ internal static class AssemblyPatcher
 
         // need to MANUALLY FUCKING LOAD cecil.rocks because MONO ANDROID DOESNT LOAD IT, THE DUMB CUNT
         string _cecilLocation = typeof(Mono.Cecil.AssemblyDefinition).Assembly.Location;
-        string _cecilRocksLocation = Path.Combine(Path.GetDirectoryName(_cecilLocation), "Mono.Cecil.Rocks.dll");
+        string _cecilRocksLocation = Path.Combine(Path.GetDirectoryName(_cecilLocation)!, "Mono.Cecil.Rocks.dll");
         JeviLib.Log("Loading Cecil.Rocks from " + _cecilRocksLocation);
         byte[] _cecilRocksAsm = File.ReadAllBytes(_cecilRocksLocation);
         Assembly.Load(_cecilRocksAsm);
 
-        string userDataFolder = MelonUtils.UserDataDirectory;
+        string userDataFolder = MelonEnvironment.UserDataDirectory;
         string jsmPath = Path.Combine(userDataFolder, "JevilSM");
         string logPath = Path.Combine(jsmPath, "FixerLog.log");
         string newSmPath = Path.Combine(jsmPath, "Il2Cpp.dll");
@@ -68,12 +69,14 @@ internal static class AssemblyPatcher
         JeviLib.Log("MelonLoader assembly updating can now begin.");
         JeviLib.Log("JeviLib custom support module does not work properly on Android. A harmony based solution has been implemented instead");
 
-        if (!typeof(Vector3).GetMethod("ToString", Array.Empty<Type>()).IsVirtual)
+        if (!typeof(Vector3).GetMethod("ToString", Array.Empty<Type>())!.IsVirtual)
         {
             JeviLib.Log("UnityEngine CoreModule modification can now begin");
-            UnityCoreModuleCeciler.Log = (str) => JeviLib.Log("UnityCoreModuleCeciler: " + str);
-            UnityCoreModuleCeciler.Error = (str) => JeviLib.Error("UnityCoreModuleCeciler: " + str);
-            UnityCoreModuleCeciler.Execute(unityCoreModulePath, il2mscorlibPath, userDataFolder);
+            throw new NotImplementedException();
+            //todo
+            //UnityCoreModuleCeciler.Log = (str) => JeviLib.Log("UnityCoreModuleCeciler: " + str);
+            //UnityCoreModuleCeciler.Error = (str) => JeviLib.Error("UnityCoreModuleCeciler: " + str);
+            //UnityCoreModuleCeciler.Execute(unityCoreModulePath, il2mscorlibPath, userDataFolder);
             JeviLib.Log("UnityEngine CoreModule modification finished successfully");
             JeviLib.Log("Critical mod files have been modified. It is recommended you restart your game.");
         }
@@ -81,9 +84,11 @@ internal static class AssemblyPatcher
         if (Utilities.UniTasksNeedPatch())
         {
             JeviLib.Log("UniTask modification can now begin.");
-            UniTaskCeciler.Log = (str) => JeviLib.Log("UniTaskCeciler: " + str);
-            UniTaskCeciler.Error = (str) => JeviLib.Error("UniTaskCeciler: " + str);
-            UniTaskCeciler.Execute(unitaskPath, il2mscorlibPath, unhollowerBasePath, MelonUtils.UserDataDirectory);
+            throw new NotImplementedException();
+            //todo
+            //UniTaskCeciler.Log = (str) => JeviLib.Log("UniTaskCeciler: " + str);
+            //UniTaskCeciler.Error = (str) => JeviLib.Error("UniTaskCeciler: " + str);
+            //UniTaskCeciler.Execute(unitaskPath, il2mscorlibPath, unhollowerBasePath, MelonEnvironment.UserDataDirectory);
             JeviLib.Log("UniTask modification has finished.");
             JeviLib.Log("Critical mod files have been modified. It is recommended you restart your game.");
         }

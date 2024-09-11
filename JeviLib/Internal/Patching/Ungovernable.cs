@@ -7,7 +7,7 @@ using System.Reflection;
 using Jevil.Patching;
 using System.Runtime.CompilerServices;
 using HarmonyLib;
-using UnhollowerBaseLib;
+using Il2CppInterop.Runtime;
 using System.Diagnostics;
 
 namespace Jevil.Internal.Patching;

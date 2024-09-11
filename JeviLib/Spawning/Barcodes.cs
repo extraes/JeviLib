@@ -1,7 +1,6 @@
-﻿using SLZ.Marrow.Data;
-using SLZ.Marrow.Pool;
-using SLZ.Marrow.Warehouse;
-using BoneLib.Nullables;
+﻿using Il2CppSLZ.Marrow.Data;
+using Il2CppSLZ.Marrow.Pool;
+using Il2CppSLZ.Marrow.Warehouse;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -9,7 +8,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
-using Cysharp.Threading.Tasks;
+using Il2CppCysharp.Threading.Tasks;
 
 namespace Jevil.Spawning;
 
@@ -21,7 +20,7 @@ public static class Barcodes
     static Dictionary<JevilBarcode, string> enumToBarcode = new(Barcodes_Array.value.Length);
     static Dictionary<string, JevilBarcode> barcodeToEnum = new(Barcodes_Array.value.Length);
 
-    static Dictionary<string, AssetPool> barcodeStrToPool = new();
+    static Dictionary<string, Pool> barcodeStrToPool = new();
 
     internal static void Init()
     {
@@ -99,10 +98,14 @@ public static class Barcodes
     /// <param name="barcodeToSpawn">A <see cref="JevilBarcode"/> corresponding to a spawnable.</param>
     /// <param name="pos">The worldspace position to spawn the object at.</param>
     /// <param name="rot">The worldspace rotation to spawn the object with.</param>
-    public static UniTask<AssetPoolee> SpawnAsync(JevilBarcode barcodeToSpawn, Vector3 pos, Quaternion rot)
+    public static UniTask<Poolee> SpawnAsync(JevilBarcode barcodeToSpawn, Vector3 pos, Quaternion rot)
     {
         Spawnable spawnable = ToSpawnable(barcodeToSpawn);
-        return AssetSpawner.SpawnAsync(spawnable, pos, rot, new BoxedNullable<Vector3>(null), false, new BoxedNullable<int>(null), null, null);
+#if SELFCONTAINED
+        return AssetSpawner.SpawnAsync(spawnable, pos, rot, Utilities.NulledNullable<Vector3>(), null, false, Utilities.NulledNullable<int>(), null, null);
+#else
+        return AssetSpawner.SpawnAsync(spawnable, pos, rot, Utilities.NulledNullable<Vector3>(), null, false, Utilities.NulledNullable<int>(), null, null);
+#endif
     }
 
     private static void PopulateDictionary()

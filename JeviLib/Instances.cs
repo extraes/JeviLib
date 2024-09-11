@@ -1,8 +1,8 @@
-﻿using SLZ.Data;
-using SLZ.Marrow.Pool;
-using SLZ.Rig;
-using SLZ.Utilities;
-using SLZ.VRMK;
+﻿using Il2CppSLZ.Bonelab;
+using Il2CppSLZ.Marrow;
+using Il2CppSLZ.Marrow.Audio;
+using Il2CppSLZ.Marrow.Pool;
+using Il2CppSLZ.Rig;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -57,9 +57,9 @@ public static class Instances
     public static Camera[] RigCameras { get; internal set; }
 
     /// <summary>
-    /// The currently operating Audio_Manager.
+    /// The currently operating 3D audio manager.
     /// </summary>
-    public static Audio_Manager Audio_Manager { get; internal set; }
+    public static Audio2dManager Audio2dManager { get; internal set; }
     /// <summary>
     /// The AudioMixerGroup corresponding to the Music mixer in the game's audio mixer settings.
     /// </summary>
@@ -92,11 +92,11 @@ public static class Instances
     /// <summary>
     /// A read-only collection of all pools.
     /// </summary>
-    public static IReadOnlyCollection<AssetPool> AllPools
+    public static IReadOnlyCollection<Pool> AllPools
     {
         get
         {
-            // Gotta do this horribleness because AssetPool is not a Unity object
+            // Gotta do this horribleness because Poolis not a Unity object
             var poolList = AssetSpawner._instance._poolList;
             if (poolList._version == allPoolsVersion) return allPools;
             
@@ -107,6 +107,6 @@ public static class Instances
     }
 
     internal static int allPoolsVersion = -1;
-    internal static IReadOnlyList<AssetPool> allPools;
+    internal static IReadOnlyList<Pool> allPools;
     internal static List<IDictionary> instanceCachesToClear = new();
 }

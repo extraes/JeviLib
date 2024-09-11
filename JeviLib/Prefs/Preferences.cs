@@ -8,7 +8,11 @@ using UnityEngine;
 using System.Reflection;
 using MelonLoader.Preferences;
 using MelonLoader;
-using BoneLib.BoneMenu.Elements;
+using MelonLoader.Utils;
+
+#if !SELFCONTAINED
+using BoneLib.BoneMenu;
+#endif
 
 namespace Jevil.Prefs;
 
@@ -77,7 +81,7 @@ public sealed class Preferences : Attribute
         PreferencesColor pCol = (PreferencesColor)type.GetCustomAttributes(false).FirstOrDefault(a => a.GetType() == typeof(PreferencesColor));
 
         PreferencesFile pFile = (PreferencesFile)type.GetCustomAttributes(false).FirstOrDefault(a => a.GetType() == typeof(PreferencesFile));
-        string qualifiedPath = Path.Combine(MelonLoader.MelonUtils.UserDataDirectory, pFile?.path ?? "MelonPreferences.cfg");
+        string qualifiedPath = Path.Combine(MelonEnvironment.UserDataDirectory, pFile?.path ?? "MelonPreferences.cfg");
 
         PrefEntries pentries = Register(type, attrib, pCol?.color ?? Color.white, qualifiedPath, overrideName ?? attrib.categoryName);
 
@@ -93,33 +97,40 @@ public sealed class Preferences : Attribute
         return pentries;
     }
 
+#if !SELFCONTAINED
     /// <summary>
-    /// Registers a type's preferences under a manually defined <see cref="MelonPreferences_Category"/> and <see cref="MenuCategory"/>.
+    /// Registers a type's preferences under a manually defined <see cref="MelonPreferences_Category"/> and <see cref="Page"/>.
     /// <para>Given type does not need the <see cref="Preferences"/> attribute.</para>
     /// </summary>
     /// <param name="t"></param>
     /// <param name="mpCat">The <see cref="MelonPreferences_Category"/> to register preferences under.</param>
-    /// <param name="bmCat">The <see cref="MenuCategory"/> to register both field and method <see cref="MenuElement"/>s under.</param> 
+    /// <param name="bmCat">The <see cref="Page"/> to register both field and method <see cref="MenuElement"/>s under.</param> 
     /// <remarks><i>This was done for Chaos. If you need a similar functionality to Chaos's preferences system, this is the one.</i></remarks>
-    public static void RegisterUnder(Type t, MelonPreferences_Category mpCat, MenuCategory bmCat)
+    public static void RegisterUnder(Type t, MelonPreferences_Category mpCat, Page bmCat)
     {
         RegisterUnder(t, mpCat, bmCat, bmCat);
     }
 
     /// <summary>
-    /// Registers a type's preferences under a manually defined <see cref="MelonPreferences_Category"/> and <see cref="MenuCategory"/>.
+    /// Registers a type's preferences under a manually defined <see cref="MelonPreferences_Category"/> and <see cref="Page"/>.
     /// <para>Separates method and field preferences into different BoneMenu categories.</para>
     /// <para>Given type does not need the <see cref="Preferences"/> attribute.</para>
     /// </summary>
     /// <param name="t"></param>
     /// <param name="mpCat">The <see cref="MelonPreferences_Category"/> to register preferences under.</param>
-    /// <param name="fieldCategory">The <see cref="MenuCategory"/> to register field <see cref="MenuElement"/>s under.</param>
-    /// <param name="methodCategory">The <see cref="MenuCategory"/> to register method <see cref="FunctionElement"/>s under. Only necessary if you define method preferences.</param>
+    /// <param name="fieldCategory">The <see cref="Page"/> to register field <see cref="MenuElement"/>s under.</param>
+    /// <param name="methodCategory">The <see cref="Page"/> to register method <see cref="FunctionElement"/>s under. Only necessary if you define method preferences.</param>
     /// <remarks><i>This was done for Chaos. If you need a similar functionality to Chaos's preferences system, this is the one.</i></remarks>
-    public static void RegisterUnder(Type t, MelonPreferences_Category mpCat, MenuCategory fieldCategory, MenuCategory methodCategory)
+    public static void RegisterUnder(Type t, MelonPreferences_Category mpCat, Page fieldCategory, Page methodCategory)
     {
-        PrefsInternal.RegisterPreferences(t, mpCat, fieldCategory, methodCategory);
+        PrefEntries pentr = new(mpCat, fieldCategory)
+        {
+            methodCategory = methodCategory,
+            fieldCategory = fieldCategory
+        };
+        PrefsInternal.RegisterPreferences(t, pentr);
     }
+#endif
 
     private static PrefEntries Register(Type type, Preferences attribute, Color color, string filePath, string name)
     {
