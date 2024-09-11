@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace Jevil.Tweening;
 
@@ -131,6 +132,20 @@ public static class TweenExtensions
     public static RotationTween TweenLocalRotation(this Transform t, Quaternion targetRot, float length)
     {
         RotationTween tween = new(t, targetRot, length, true);
+        Tweener.AddTween(tween);
+        return tween;
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="img"></param>
+    /// <param name="target"></param>
+    /// <param name="length"></param>
+    /// <returns></returns>
+    public static ImageFillTween TweenFillAmount(this Image img, float target, float length)
+    {
+        ImageFillTween tween = new(img, target, length);
         Tweener.AddTween(tween);
         return tween;
     }
