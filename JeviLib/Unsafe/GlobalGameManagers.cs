@@ -4,8 +4,8 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
-using UnhollowerBaseLib;
-using UnhollowerRuntimeLib.XrefScans;
+using Il2CppInterop.Runtime;
+using Il2CppInterop.Common.XrefScans;
 
 #if !JEVIL_MELONMOD
 using JeviLib = JevilPlugin.JevilPlugin;
@@ -20,7 +20,7 @@ namespace Jevil.Unsafe;
 /// </summary>
 public static partial class GlobalGameManagers
 {
-    internal const int PLAYERSETTINGS_DISABLEDEPTHANDSTENCILBUFFERS_OFFSET = 0x2c4;
+    //todo: internal const int PLAYERSETTINGS_DISABLEDEPTHANDSTENCILBUFFERS_OFFSET = 0x2c4;
 
     /// <summary>
     /// Retrieves a global game manager from the given index. An enum (<see cref="ManagerIndex"/>) has been provided for a little more definition as to what you're going to be accessing.

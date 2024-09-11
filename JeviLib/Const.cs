@@ -33,6 +33,10 @@ public static class Const
     /// </summary>
     public const string UrpLitName = "Universal Render Pipeline/Lit (PBR Workflow)";
     /// <summary>
+    /// The name of the SSR-supporting, volumetrics-rendering SLZ LitMAS <see cref="Shader"/>.
+    /// </summary>
+    public const string LITMAS_NAME = "SLZ/LitMAS/LitMAS Opaque";
+    /// <summary>
     /// Because <see cref="Material.mainTexture"/> doesn't work on URP Lit, you must use <see cref="Material.GetTexture(string)"/> and <see cref="Material.SetTexture(string, Texture)"/> with this.
     /// </summary>
     public const string UrpLitMainTexName = "_BaseMap";
