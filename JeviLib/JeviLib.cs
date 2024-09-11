@@ -8,25 +8,30 @@ using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using BoneLib;
-using BoneLib.BoneMenu;
-using BoneLib.BoneMenu.Elements;
-using BoneLib.RandomShit;
-using Cysharp.Threading.Tasks;
+using Il2CppCysharp.Threading.Tasks;
+using Il2CppSLZ.Marrow;
+using Il2CppSLZ.Marrow.Audio;
+using Il2CppSLZ.Marrow.SceneStreaming;
 using Jevil.IMGUI;
 using Jevil.Internal.Patching;
 using Jevil.Patching;
 using Jevil.PostProcessing;
-using Jevil.Prefs;
 using Jevil.Spawning;
 using Jevil.Tweening;
 using MelonLoader;
-using MelonLoader.Assertions;
-using SLZ.Utilities;
 using UnityEngine;
-using UnityEngine.Profiling;
-using UnityEngine.Rendering;
 using UnityEngine.SceneManagement;
+using DebugDraw = Jevil.IMGUI.DebugDraw;
+using HarmonyLib;
+using MelonLoader.Utils;
+using Il2CppOculus.Platform.Models;
+
+
+#if !SELFCONTAINED
+using BoneLib;
+using BoneLib.BoneMenu;
+using BoneLib.RandomShit;
+#endif
 
 namespace Jevil;
 
@@ -40,17 +45,19 @@ public class JeviLib : MelonMod
     /// https://cdn.discordapp.com/attachments/646885826776793099/976272724324401172/IMG_2559.jpg
     /// </summary>
     public JeviLib() : base() => instance = this;
-    internal static JeviLib instance;  
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+    internal static JeviLib instance;
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
     internal readonly new Assembly Assembly = typeof(JeviLib).Assembly; // melonloader's favorite word is "Obsolete"
 
     internal static ConcurrentDictionary<string, ConcurrentBag<Assembly>> namespaceAssemblies = new();
-    internal static event Action onUpdateCallback;
-    internal static event Action onNamespaceAssembliesCompleted;
+    internal static event Action? onUpdateCallback;
+    internal static event Action? onNamespaceAssembliesCompleted;
     internal static int unityMainThread;
 
     static readonly ConcurrentQueue<string> toLog = new();
     static Stopwatch mainThreadInvokeTimer = new();
-    static Task<string> nsCacheTask;
+    static Task<string>? nsCacheTask;
 
     /// <summary>
     /// Gets a value indicating whether the asynchronously built map of namespaces to assemblies is done being created.
@@ -59,14 +66,55 @@ public class JeviLib : MelonMod
     public static bool DoneMappingNamespacesToAssemblies { get; private set; }
 
     /// <summary>
+    /// Determines whether methods that <i>must</i> use external mod deps (and aren't fully removed because of that) should throw <see cref="NotImplementedException"/>s.
+    /// </summary>
+    public static bool SelfContainedThrowNotImplemented { get; private set; }
+
+
+#if false // only break glass in case of emergency: aka when patching starts crashing the game for unknown reasons
+    static FieldInfo fi1 = typeof(PatchProcessor).GetField("instance", Const.AllBindingFlags);
+    static FieldInfo fi2 = typeof(PatchProcessor).GetField("original", Const.AllBindingFlags);
+    static void HarmonyPatchPrefix(PatchProcessor __instance)
+    {
+#if !DEBUG
+    #error remove this, dumbass
+#endif
+
+        Log("fi1 " + fi1);
+        Log("fi2 " + fi2);
+        HarmonyLib.Harmony harmony = (HarmonyLib.Harmony)fi1.GetValue(__instance)!;
+        MethodBase mb = (MethodBase)fi2.GetValue(__instance)!;
+        Log($"Harmony instance with ID '{harmony.Id}' is patching {mb.FullDescription()}");
+    }
+#endif
+
+    /// <summary>
     /// https://media.discordapp.net/attachments/919014401187643435/958026151383691344/freeze-1.gif
     /// </summary>
-    public override void OnEarlyInitializeMelon()
+    public void _OnEarlyInitializeMelon()
     {
+#if DEBUG
+        // launch debugger because, for some inane reason, melonloader doesnt thoroughly test jack shit
+        bool launchDbg = MelonLaunchOptions.Core.IsDebug
+                      && typeof(MelonEnvironment).Assembly.GetName().Version?.ToString() == "0.6.4.0"
+                      && !Utilities.IsPlatformQuest();
+        
+        Log("ML isDbg: " + MelonLaunchOptions.Core.IsDebug);
+        Log("ML ver: " + typeof(MelonEnvironment).Assembly.GetName().Version?.ToString() ?? "null");
+        Log("On Quest: " + Utilities.IsPlatformQuest());
+        Log("Need launch dbgr: " + launchDbg);
+        Log(Debugger.IsAttached);
+        if (launchDbg && !Debugger.IsAttached)
+        {
+            Debugger.Launch();
+        }
+#endif
+
         Stopwatch sw = Stopwatch.StartNew();
         
 #if DEBUG
         Stopwatch submoduleInitSW = Stopwatch.StartNew();
+        //HarmonyInstance.Patch(typeof(PatchProcessor).GetMethod(nameof(PatchProcessor.Patch)), prefix: Utilities.ToHarmony(HarmonyPatchPrefix));
 
         DebugDraw.InitTokens();
 #endif
@@ -84,15 +132,17 @@ public class JeviLib : MelonMod
 
 #if DEBUG
         submoduleInitSW.Stop();
-        LoggerInstance.Msg(ConsoleColor.Blue, $"JeviLib submodules initialized in {submoduleInitSW.ElapsedMilliseconds}ms");
+        LoggerInstance.Msg(System.ConsoleColor.Blue, $"JeviLib submodules initialized in {submoduleInitSW.ElapsedMilliseconds}ms");
 #endif
 
         nsCacheTask = Task.Run(this.GetNamespaces);
 
-        Hooking.OnLevelInitialized += (li) => { OnSceneWasInitialized(-1, li.barcode); };
+#if DEBUG && !SELFCONTAINED
+        Hooking.OnLevelLoaded += (li) => { OnSceneWasInitialized(-1, li.barcode); };
+#endif
 
         sw.Stop();
-        LoggerInstance.Msg(ConsoleColor.Blue, $"Pre-initialized {nameof(JeviLib)} v{JevilBuildInfo.VERSION}{(JevilBuildInfo.DEBUG ? " Debug (Development)" : "")} in {sw.ElapsedMilliseconds}ms");
+        LoggerInstance.Msg(System.ConsoleColor.Blue, $"Pre-initialized {nameof(JeviLib)} v{JevilBuildInfo.VERSION}{(JevilBuildInfo.DEBUG ? " Debug (Development)" : "")} in {sw.ElapsedMilliseconds}ms");
     }
 
     /// <summary>
@@ -100,6 +150,8 @@ public class JeviLib : MelonMod
     /// </summary>
     public override void OnInitializeMelon()
     {
+        _OnEarlyInitializeMelon();
+
         Stopwatch sw = Stopwatch.StartNew();
 
 #if DEBUG
@@ -108,12 +160,19 @@ public class JeviLib : MelonMod
         Log("You should only be using this build if you create code mods, and not if you simply use mods. Do not rely on the extra checks in this build, or require the use of a debug build for your production code.");
 #endif
 
-        if (!nsCacheTask.IsCompleted)
-            Log("Waiting for namespace assembly cache task to complete.");
+        if (nsCacheTask is not null)
+        {
+            if (!nsCacheTask.IsCompleted)
+                Log("Waiting for namespace assembly cache task to complete.");
 
-        string nsCacheLog = nsCacheTask.GetAwaiter().GetResult();
+            string nsCacheLog = nsCacheTask.GetAwaiter().GetResult();
 
-        Log(nsCacheLog);
+            Log(nsCacheLog);
+        }
+        else
+        {
+            Log("Namespace cache task is null... What?");
+        }
 
         try
         {
@@ -125,9 +184,22 @@ public class JeviLib : MelonMod
             Error("Exception while initializing fixes: " + ex);
         }
 
+#if SELFCONTAINED
+        try
+        {
+            Hook.OntoMethod(typeof(RigManager).GetMethod(nameof(RigManager.OnEnable), BindingFlags.Public | BindingFlags.Instance) ?? throw new MissingMethodException("RigManager.OnEnable"), () => { OnSceneWasInitialized(-1, SceneStreamer.Session.Level.name); });
+        }
+        catch (Exception ex)
+        {
+            Error("Exception while initializing RigManager.OnEnable patch: " + ex);
+        }
+#endif
+
 #if DEBUG
+
+#if !SELFCONTAINED
         Log("Creating BoneMenu for jevil postprocess testing...");
-        var mcat = MenuManager.CreateCategory("Test Jevil PostFX (debug only)", Color.white);
+        var mcat = Page.Root.CreatePage("Test Jevil PostFX (debug only)", Color.white);
 
         foreach (Type postproc in typeof(SharedPostProcessingMaterials).GetNestedTypes())
         {
@@ -135,13 +207,15 @@ public class JeviLib : MelonMod
             foreach (MethodInfo method in postproc.GetMethods())
             {
                 if (method.Name.Contains("able"))
-                    mcat.CreateFunctionElement(method.Name + " " + postproc.Name, Color.white, () => method.Invoke(null, Array.Empty<object>()));
+                    mcat.CreateFunction(method.Name + " " + postproc.Name, Color.white, () => method.Invoke(null, Array.Empty<object>()));
             }
         }
+#endif
 
         SharedPostProcessingMaterials.Depth.DepthPow.SetOn(SharedPostProcessingMaterials.Depth.Material, 1);
         SharedPostProcessingMaterials.Depth.DepthMult.SetOn(SharedPostProcessingMaterials.Depth.Material, 1);
         SharedPostProcessingMaterials.Depth.UseColor.SetOn(SharedPostProcessingMaterials.Depth.Material, false);
+        SharedPostProcessingMaterials.Pixelate.PixelsPerAxis.SetOn(SharedPostProcessingMaterials.Pixelate.Material, 100);
 #endif
 
         CreateNeverCancel();
@@ -149,7 +223,7 @@ public class JeviLib : MelonMod
         LoggerInstance.Msg("Device memory statistics:");
         LoggerInstance.Msg(" - Total memory: " + SystemInfo.systemMemorySize);
         LoggerInstance.Msg(" - Used memory (will likely spike when game starts): " + Process.GetCurrentProcess().PeakWorkingSet64 / 1024 / 1024);
-        LoggerInstance.Msg(ConsoleColor.Blue, $"Completed initialization of {nameof(JeviLib)} v{JevilBuildInfo.VERSION}{(JevilBuildInfo.DEBUG ? " Debug" : "")} in {sw.ElapsedMilliseconds}ms");
+        LoggerInstance.Msg(System.ConsoleColor.Blue, $"Completed initialization of {nameof(JeviLib)} v{JevilBuildInfo.VERSION}{(JevilBuildInfo.DEBUG ? " Debug" : "")} in {sw.ElapsedMilliseconds}ms");
     }
 
     private static void CreateNeverCancel()
@@ -167,25 +241,28 @@ public class JeviLib : MelonMod
     /// </summary>
     public override void OnUpdate()
     {
-        onUpdateCallback.InvokeActionSafe();
+        onUpdateCallback.InvokeSafeSync();
         Tweener.UpdateAll();
 
-        while (AsyncUtilities.mainThreadCallbacks.TryDequeue(out var mte))
+        if (!AsyncUtilities.mainThreadCallbacks.IsEmpty)
         {
-            try
+            while (AsyncUtilities.mainThreadCallbacks.TryDequeue(out var mte))
             {
-                mte.execute();
-            }
-            catch (Exception ex)
-            {
-                Error("Exception while executing a main-thread callback");
-                Error(ex);
-                if (mte.completer.UnsafeGetStatus() != UniTaskStatus.Pending) continue;
+                try
+                {
+                    mte.execute();
+                }
+                catch (Exception ex)
+                {
+                    Error("Exception while executing a main-thread callback");
+                    Error(ex);
+                    if (mte.completer.UnsafeGetStatus() != UniTaskStatus.Pending) continue;
 
-                mte.completer.exception = new(Il2CppSystem.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(new Il2CppSystem.Exception(ex.ToString())));
-            }
+                    mte.completer.exception = new(Il2CppSystem.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(new Il2CppSystem.Exception(ex.ToString())));
+                }
 
-            mte.completer.TrySetResult();
+                mte.completer.TrySetResult();
+            }
         }
 
         mainThreadInvokeTimer.Restart();
@@ -207,7 +284,10 @@ public class JeviLib : MelonMod
     /// </summary>
     public override void OnSceneWasInitialized(int buildIndex, string sceneName)
     {
+        //return;
+#if DEBUG
         Log($"OSWI CALLED: PARAMS: IDX={buildIndex}, NAME={sceneName}");
+#endif
         if (!Instances.Player_RigManager.INOC()) return;
 
         Waiting.WaitForSceneInit.currSceneIdx = SceneManager.GetActiveScene().buildIndex;
@@ -225,22 +305,22 @@ public class JeviLib : MelonMod
             CreateNeverCancel();
 
         // Grab the necessary references when the scene starts. 
-        Instances.Player_BodyVitals =
-            GameObject.FindObjectOfType<SLZ.VRMK.BodyVitals>();
-        if (Instances.Player_BodyVitals.INOC())
-            return;
         Instances.Player_RigManager =
-            GameObject.FindObjectOfType<SLZ.Rig.RigManager>();
+            GameObject.FindObjectsOfType<Il2CppSLZ.Marrow.RigManager>().FirstOrDefault(r => r.gameObject.scene != default)!;
+        if (Instances.Player_RigManager.INOC())
+            return;
+        Instances.Player_BodyVitals =
+            GameObject.FindObjectOfType<Il2CppSLZ.Bonelab.BodyVitals>();
         Instances.Player_PhysicsRig =
-            GameObject.FindObjectOfType<SLZ.Rig.PhysicsRig>();
+            Instances.Player_RigManager.physicsRig;
         Instances.Player_Health =
-            GameObject.FindObjectOfType<Player_Health>();
-        Instances.Audio_Manager =
-            GameObject.FindObjectOfType<Audio_Manager>();
+            GameObject.FindObjectOfType<Il2CppSLZ.Marrow.Player_Health>();
+        Instances.Audio2dManager =
+            GameObject.FindObjectOfType<Audio2dManager>();
         Instances.MusicMixer = //todo: get mixer names from runtime game
-            Instances.Audio_Manager.audioMixer.FindMatchingGroups("Music").First();
+            Instances.Audio2dManager.mixer.FindMatchingGroups("Music").First();
         Instances.SFXMixer =
-            Instances.Audio_Manager.audioMixer.FindMatchingGroups("SFX").First();
+            Instances.Audio2dManager.mixer.FindMatchingGroups("SFX").First();
         // Separate cameras because it's better this way, I think. It's more distinguishable even if it requires two lines to keep the two "in sync"
         Instances.RigCameras =
             GameObject.FindObjectsOfType<Camera>().Where(c => c.transform.IsChildOfRigManager()).ToArray();
@@ -249,7 +329,11 @@ public class JeviLib : MelonMod
         Instances.InHeadsetCam =
             Instances.RigCameras.FirstOrDefault(c => c.name == "Head");
 
-        Transform pHead = Player.playerHead;
+#if SELFCONTAINED
+        Transform pHead = Instances.Player_PhysicsRig.m_head;
+#else
+        Transform pHead = Player.Head;
+#endif
 
         GameObject musicPlayer = new("JeviLib Music Player");
         musicPlayer.transform.parent = pHead.transform;
@@ -268,8 +352,6 @@ public class JeviLib : MelonMod
         Instances.SFXPlayer._defaultVolume = 0.25f;
         Instances.SFXPlayer.source.volume = 0.25f;
         Instances.SFXPlayer.enabled = true;
-
-        Spawning.Ammo.Init();
 
 #if DEBUG
         Log("Found our instances in " + sw.ElapsedMilliseconds + "ms.");
@@ -321,7 +403,7 @@ public class JeviLib : MelonMod
         return $"Cached all {namespaceAssemblies.Count} namespaces and their respective assemblies in {sw.ElapsedMilliseconds}ms";
     }
 
-    private void PopulateDictionary_ThreadStart(object obj) => this.PopulateDictionary((Assembly[])obj);
+    private void PopulateDictionary_ThreadStart(object? obj) => this.PopulateDictionary((Assembly[])obj!);
 
     private void PopulateDictionary(Assembly[] section)
     {
@@ -331,17 +413,17 @@ public class JeviLib : MelonMod
             for (int i = 0; i < section.Length; i++)
             {
                 Assembly currentAsm = section[i];
-                currAsmTitle = currentAsm.FullName;
+                currAsmTitle = currentAsm.FullName ?? "<unnamed>";
                 if (currAsmTitle.Contains("JeviLib")) continue; // causes quest enumerator wrapper to fail
                 if (currentAsm.IsDynamic) continue; // avoid exceptions from Redirect and Hooking
                 
                 Type[] types = currentAsm.GetTypes();
 
-                IEnumerable<string> namespaces = types.Select(t => t.Namespace).Distinct();
+                IEnumerable<string> namespaces = types.Select(t => t.Namespace).NoNull().Distinct();
 
                 foreach (string ns in namespaces)
                 {
-                    ConcurrentBag<Assembly> asms;
+                    ConcurrentBag<Assembly>? asms;
                     if (!namespaceAssemblies.TryGetValue(ns ?? "", out asms))
                     {
                         asms = new ConcurrentBag<Assembly>();
@@ -378,8 +460,8 @@ public class JeviLib : MelonMod
 
     #region MelonLogger replacements
 
-    internal static void Log(string str, ConsoleColor conCol = ConsoleColor.Gray) => instance.LoggerInstance.Msg(conCol, str);
-    internal static void Log(object obj, ConsoleColor conCol = ConsoleColor.Gray) => instance.LoggerInstance.Msg(conCol, obj?.ToString() ?? "null");
+    internal static void Log(string str, ConsoleColor conCol = System.ConsoleColor.Gray) => instance.LoggerInstance.Msg(conCol, str);
+    internal static void Log(object obj, ConsoleColor conCol = System.ConsoleColor.Gray) => instance.LoggerInstance.Msg(conCol, obj?.ToString() ?? "null");
     internal static void Warn(string str) => instance.LoggerInstance.Warning(str);
     internal static void Warn(object obj) => instance.LoggerInstance.Warning(obj?.ToString() ?? "null");
     internal static void Error(string str) => instance.LoggerInstance.Error(str);

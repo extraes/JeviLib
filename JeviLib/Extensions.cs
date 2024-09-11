@@ -1,11 +1,9 @@
-﻿using BoneLib;
-using BoneLib.Nullables;
-using Cysharp.Threading.Tasks;
+﻿using Il2CppCysharp.Threading.Tasks;
 using Jevil.Spawning;
-using SLZ.Marrow.Data;
-using SLZ.Marrow.Pool;
-using SLZ.Marrow.Warehouse;
-using SLZ.Rig;
+using Il2CppSLZ.Marrow.Data;
+using Il2CppSLZ.Marrow.Pool;
+using Il2CppSLZ.Marrow.Warehouse;
+using Il2CppSLZ.Rig;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -15,9 +13,16 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
-using UnhollowerRuntimeLib;
+using Il2CppInterop.Runtime;
 using UnityEngine;
 using UnityEngine.Assertions;
+using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
+using Il2CppSLZ.Marrow;
+
+#if !SELFCONTAINED
+using BoneLib;
+#endif
 
 namespace Jevil;
 
@@ -140,7 +145,7 @@ public static class Extensions
     /// <param name="assembly">The assembly containing the resource</param>
     /// <param name="resourcePath">The resource path. Debug builds check for this path in the assembly and throw a more descriptive Exception. Release builds will throw <see cref="NullReferenceException"/></param>
     /// <param name="whatToDoWithResource">The method or lambda to run, taking in the parameter of the raw bytes of the resource</param>
-    /// <exception cref="System.IO.FileNotFoundException">The resource path does not point to a valid resource</exception>
+    /// <exception cref="FileNotFoundException">The resource path does not point to a valid resource</exception>
     public static void UseEmbeddedResource(this System.Reflection.Assembly assembly, string resourcePath, Action<byte[]> whatToDoWithResource)
     {
 #if DEBUG
@@ -148,7 +153,7 @@ public static class Extensions
         if (!paths.Any(s => s == resourcePath))
         {
             foreach (string path in paths) JeviLib.Log(path);
-            throw new System.IO.FileNotFoundException($"The specified resource was not found in the Assembly {assembly.GetName().Name}. All resource paths have been logged, use these to get an existent resource path.", resourcePath);
+            throw new FileNotFoundException($"The specified resource was not found in the Assembly {assembly.GetName().Name}. All resource paths have been logged, use these to get an existent resource path.", resourcePath);
         }
 #endif
 
@@ -160,7 +165,7 @@ public static class Extensions
     /// </summary>
     /// <param name="assembly">The assembly containing the resource</param>
     /// <param name="resourcePath">The resource path. Debug builds check for this path in the assembly and throw a more descriptive Exception. Release builds will throw <see cref="NullReferenceException"/></param>
-    /// <exception cref="System.IO.FileNotFoundException">The resource path does not point to a valid resource</exception>
+    /// <exception cref="FileNotFoundException">The resource path does not point to a valid resource</exception>
     public static byte[] GetEmbeddedResource(this System.Reflection.Assembly assembly, string resourcePath)
     {
 #if DEBUG
@@ -168,12 +173,12 @@ public static class Extensions
         if (!paths.Any(s => s == resourcePath))
         {
             foreach (string path in paths) JeviLib.Log(path);
-            throw new System.IO.FileNotFoundException($"The specified resource was not found in the Assembly {assembly.GetName().Name}. All resource paths have been logged, use these to get an existent resource path.", resourcePath);
+            throw new FileNotFoundException($"The specified resource was not found in the Assembly {assembly.GetName().Name}. All resource paths have been logged, use these to get an existent resource path.", resourcePath);
         }
 #endif
 
-        using System.IO.Stream stream = assembly.GetManifestResourceStream(resourcePath);
-        using System.IO.MemoryStream mStream = new((int)stream.Length); // Don't overallocate memory to the mstream (?).
+        using Stream stream = assembly.GetManifestResourceStream(resourcePath) ?? throw new NullReferenceException();
+        using MemoryStream mStream = new((int)stream.Length); // Don't overallocate memory to the mstream (?).
         // Copy the stream to a memorystream. Why? Don't know, ask .NET 4.7.2 designers.
         stream.CopyTo(mStream);
         return mStream.ToArray();
@@ -413,14 +418,14 @@ public static class Extensions
     }
 
     /// <summary>
-    /// Filters out <see langword="null"/>s from the given <paramref name="sequence"/> using the != operator.
+    /// Filters out <see langword="null"/>s from the given <paramref name="sequence"/> using the <c>is</c> keyword.
     /// </summary>
     /// <typeparam name="T">Any type.</typeparam>
     /// <param name="sequence"></param>
     /// <returns></returns>
-    public static IEnumerable<T> NoNull<T>(this IEnumerable<T> sequence)
+    public static IEnumerable<T> NoNull<T>(this IEnumerable<T?> sequence)
     {
-        return sequence.Where(o => o != null);
+        return sequence.Where(o => o is not null)!;
     }
 
     /// <summary>
@@ -472,7 +477,7 @@ public static class Extensions
     /// <param name="methodName">The name of the method. Can be overridden.</param>
     /// <param name="paramTypes">In case you want more specificity, you can specify an array of types correspoding to the parameter types.</param>
     /// <returns>An instance of <see cref="MethodInfo"/> if there's at least one method matching the criteria, or <see langword="null"/>.</returns>
-    public static MethodInfo GetMethodEasy(this Type type, string methodName, Type[] paramTypes = null)
+    public static MethodInfo? GetMethodEasy(this Type type, string methodName, Type[]? paramTypes = null)
     {
         if (paramTypes == null)
         {
@@ -514,24 +519,33 @@ public static class Extensions
     /// </summary>
     /// <param name="mb">Any MethodBase declared by a Type.</param>
     /// <returns>An instnace of <see cref="MethodInfo"/>, or <see langword="null"/> for whatever reason. Should always return a methodinfo tho.</returns>
-    public static MethodInfo ToInfo(this MethodBase mb)
+    public static MethodInfo? ToInfo(this MethodBase mb)
     {
-        Type type = mb.DeclaringType;
-        return type.GetMethod(mb.Name, Const.AllBindingFlags);
-    } 
+        Type? type = mb.DeclaringType;
+        return type?.GetMethod(mb.Name, Const.AllBindingFlags);
+    }
 
     /// <summary>
     /// Returns whether an object in the IL2CPP domain <b>I</b>s <b><see langword="N"/></b><see langword="ull"/> <b>O</b>r <b>C</b>ollected.
     /// </summary>
     /// <param name="obj">Any Unity object.</param>
     /// <returns></returns>
-    public static bool INOC(this UnityEngine.Object obj)
+    [DebuggerStepThrough]
+    public static bool INOC([NotNullWhen(false)] this UnityEngine.Object? obj)
     {
+        if (obj is null || obj.WasCollected) return true;
+
+        try
+        {
+            return obj == null;
+        }
+        catch { }
+
         IntPtr ptr = IntPtr.Zero;
         try { ptr = obj.Pointer; }
         catch { }
         // This shit better fucking work this time
-        return obj is null || ptr == IntPtr.Zero || obj.WasCollected || obj == null;
+        return ptr == IntPtr.Zero;
     }
 
     /// <summary>
@@ -574,8 +588,8 @@ public static class Extensions
         //todo: check if Hand.rb is null
         try
         {
-            Player.leftHand.rb.AddForce(velocity, ForceMode.VelocityChange);
-            Player.rightHand.rb.AddForce(velocity, ForceMode.VelocityChange);
+            physRig.leftHand.rb.AddForce(velocity, ForceMode.VelocityChange);
+            physRig.rightHand.rb.AddForce(velocity, ForceMode.VelocityChange);
         }
         catch { }
     }
@@ -589,7 +603,11 @@ public static class Extensions
     public static void Spawn(this SpawnableCrate crate, Vector3 pos, Quaternion rot)
     {
         Spawnable spawn = Barcodes.ToSpawnable(crate.Barcode.ID);
-        AssetSpawner.Spawn(spawn, pos, rot, new BoxedNullable<Vector3>(null), false, new BoxedNullable<int>(null), null, null);
+#if SELFCONTAINED
+        AssetSpawner.Spawn(spawn, pos, rot, Utilities.NulledNullable<Vector3>(), null, false, Utilities.NulledNullable<int>(), null, null);
+#else
+        AssetSpawner.Spawn(spawn, pos, rot, Utilities.NulledNullable<Vector3>(), null, false, Utilities.NulledNullable<int>(), null, null);
+#endif
     }
 
     /// <summary>
@@ -598,10 +616,14 @@ public static class Extensions
     /// <param name="crate">oo ee oo aa aa ting tang walla walla bing bang</param>
     /// <param name="pos">Worldspace position to spawn the object</param>
     /// <param name="rot">Worldspace rotation to give the object</param>
-    public static UniTask<AssetPoolee> SpawnAsync(this SpawnableCrate crate, Vector3 pos, Quaternion rot)
+    public static UniTask<Poolee> SpawnAsync(this SpawnableCrate crate, Vector3 pos, Quaternion rot)
     {
         Spawnable spawn = Barcodes.ToSpawnable(crate.Barcode.ID);
-        return AssetSpawner.SpawnAsync(spawn, pos, rot, new BoxedNullable<Vector3>(null), false, new BoxedNullable<int>(null), null, null);
+#if SELFCONTAINED
+        return AssetSpawner.SpawnAsync(spawn, pos, rot, Utilities.NulledNullable<Vector3>(), null, false, Utilities.NulledNullable<int>(), null, null);
+#else
+        return AssetSpawner.SpawnAsync(spawn, pos, rot, Utilities.NulledNullable<Vector3>(), null, false, Utilities.NulledNullable<int>(), null, null);
+#endif
     }
 
     /// <summary>
@@ -613,11 +635,15 @@ public static class Extensions
     /// <param name="enableOnSpawn"></param>
     public static void Spawn(this Spawnable spawnable, Vector3 pos, Quaternion rot, bool? enableOnSpawn = null)
     {
-        Action<GameObject> callback = null;
+        Action<GameObject>? callback = null;
         if (enableOnSpawn.HasValue) 
             callback = new Action<GameObject>(go => go.SetActive(enableOnSpawn.Value));
-        
-        AssetSpawner.Spawn(spawnable, pos, rot, new BoxedNullable<Vector3>(null), false, new BoxedNullable<int>(null), callback, null);
+
+#if SELFCONTAINED
+        AssetSpawner.Spawn(spawnable, pos, rot, Utilities.NulledNullable<Vector3>(), null, false, Utilities.NulledNullable<int>(), callback, null);
+#else
+        AssetSpawner.Spawn(spawnable, pos, rot, Utilities.NulledNullable<Vector3>(), null, false, Utilities.NulledNullable<int>(), callback, null);
+#endif
     }
 
     /// <summary>
@@ -626,20 +652,24 @@ public static class Extensions
     /// <param name="spawnable">oo ee oo aa aa ting tang walla walla bing bang</param>
     /// <param name="pos">Worldspace position to spawn the object</param>
     /// <param name="rot">Worldspace rotation to give the object</param>
-    public static UniTask<AssetPoolee> SpawnAsync(this Spawnable spawnable, Vector3 pos, Quaternion rot)
+    public static UniTask<Poolee> SpawnAsync(this Spawnable spawnable, Vector3 pos, Quaternion rot)
     {
-        return AssetSpawner.SpawnAsync(spawnable, pos, rot, new BoxedNullable<Vector3>(null), false, new BoxedNullable<int>(null), null, null);
+#if SELFCONTAINED
+        return AssetSpawner.SpawnAsync(spawnable, pos, rot, Utilities.NulledNullable<Vector3>(), null, false, Utilities.NulledNullable<int>(), null, null);
+#else
+        return AssetSpawner.SpawnAsync(spawnable, pos, rot, Utilities.NulledNullable<Vector3>(), null, false, Utilities.NulledNullable<int>(), null, null);
+#endif
     }
 
     /// <summary>
-    /// Spawns another <see cref="AssetPoolee"/> from the given <see cref="AssetPoolee"/>'s <see cref="AssetPool"/>.
+    /// Spawns another <see cref="Poolee"/> from the given <see cref="Poolee"/>'s <see cref="Pool"/>.
     /// </summary>
     /// <param name="asspoole">https://media.tenor.com/images/1af43e40653cb90765d776fedf0186cf/tenor.gif</param>
     /// <param name="pos">Worldspace position to spawn the object</param>
     /// <param name="rot">Worldspace rotation to give the object</param>
-    public static void Dupe(this AssetPoolee asspoole, Vector3 pos, Quaternion rot)
+    public static void Dupe(this Poolee asspoole, Vector3 pos, Quaternion rot)
     {
-        asspoole.spawnableCrate.Spawn(pos, rot);
+        asspoole.SpawnableCrate.Spawn(pos, rot);
     }
 
     /// <summary>
@@ -682,7 +712,7 @@ public static class Extensions
     /// <returns></returns>
     /// <exception cref="Il2CppConversionException">Attempted to fetch an array. This is not currently supported.</exception>
     /// <exception cref="Exception">Unknown field type. </exception>
-    public static FieldType GetStatic<FieldType>(this AndroidJavaObject ajo, string fieldName)
+    public static FieldType? GetStatic<FieldType>(this AndroidJavaObject ajo, string fieldName)
     {
         IntPtr fieldID = AndroidJNIHelper.GetFieldID<FieldType>(ajo.m_jclass, fieldName, true);
         //if (Il2CppClassPointerStore<FieldType>.NativeClassPtr == IntPtr.Zero)
@@ -732,13 +762,13 @@ public static class Extensions
         {
             IntPtr staticObjectField = AndroidJNISafe.GetStaticObjectField(ajo.m_jclass, fieldID);
             
-            return (staticObjectField == IntPtr.Zero) ? default(FieldType) : ((FieldType)(object)AndroidJavaObject.AndroidJavaObjectDeleteLocalRef(staticObjectField));
+            return (staticObjectField == IntPtr.Zero) ? default : ((FieldType)(object)AndroidJavaObject.AndroidJavaObjectDeleteLocalRef(staticObjectField));
         }
 
         if (typeof(FieldType) == typeof(AndroidJavaObject))
         {
             IntPtr staticObjectField2 = AndroidJNISafe.GetStaticObjectField(ajo.m_jclass, fieldID);
-            return (staticObjectField2 == IntPtr.Zero) ? default(FieldType) : ((FieldType)(object)AndroidJavaObject.AndroidJavaObjectDeleteLocalRef(staticObjectField2));
+            return (staticObjectField2 == IntPtr.Zero) ? default : ((FieldType)(object)AndroidJavaObject.AndroidJavaObjectDeleteLocalRef(staticObjectField2));
         }
 
         if (typeof(FieldType).IsAssignableFrom(typeof(Array)))
@@ -770,7 +800,7 @@ public static class Extensions
     /// </summary>
     /// <param name="stream"></param>
     /// <param name="arr"></param>
-    public static void Write(this System.IO.Stream stream, byte[] arr)
+    public static void Write(this Stream stream, byte[] arr)
     {
         stream.Write(arr, 0, arr.Length);
     }
@@ -780,7 +810,7 @@ public static class Extensions
     /// </summary>
     /// <param name="stream"></param>
     /// <param name="arr"></param>
-    public static Task WriteAsync(this System.IO.Stream stream, byte[] arr)
+    public static Task WriteAsync(this Stream stream, byte[] arr)
     {
         return stream.WriteAsync(arr, 0, arr.Length);
     }
@@ -797,8 +827,12 @@ public static class Extensions
         int idx = 0;
         foreach (var item in enumerator)
         {
-            if (value is null && item is null || item.Equals(value))
+            if (value is null && item is null)
                 return idx;
+
+            if (value is not null && item is not null)
+                if (value.Equals(item))
+                    return idx;
 
             idx++;
         }
@@ -824,5 +858,18 @@ public static class Extensions
             idx++;
         }
         return -1;
+    }
+
+    /// <summary>
+    /// Returns an IL2CPP nullable value from a managed nullable value.
+    /// </summary>
+    /// <param name="nullable">thank god im athiest</param>
+    /// <returns>An <see cref="Il2CppSystem.Nullable{T}"/></returns>
+    public static Il2CppSystem.Nullable<T> ToIl2<T>(this T? nullable) where T : struct
+    {
+        var value = new Il2CppSystem.Nullable<T>(nullable ?? default);
+        value.hasValue = nullable.HasValue;
+
+        return value;
     }
 }

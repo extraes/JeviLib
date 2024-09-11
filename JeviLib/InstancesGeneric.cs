@@ -3,6 +3,7 @@ using Jevil.Patching;
 using MelonLoader;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using UnityEngine;
 
@@ -17,12 +18,12 @@ public static class Instances<T> where T : Component
     /// <summary>
     /// Returns the most recently cached component. This may return null, but return a destroyed object.
     /// </summary>
-    public static T MostRecentlyCached => mostRecent.INOC() ? null : mostRecent;
-    static T mostRecent;
+    public static T? MostRecentlyCached => mostRecent.INOC() ? null : mostRecent;
+    static T? mostRecent;
     static bool triedAutocache = false;
     static bool isAutocaching = false;
-    static readonly Dictionary<GameObject, T> cache = new(new UnityObjectComparer<GameObject>());
-    static readonly HarmonyMethod autoCacheHMethod = typeof(Instances<T>).GetMethod(nameof(AutoCachePatch), BindingFlags.Static | BindingFlags.NonPublic).ToNewHarmonyMethod();
+    static readonly Dictionary<GameObject, T> cache = new(UnityObjectComparer<GameObject>.Instance);
+    static readonly HarmonyMethod autoCacheHMethod = Utilities.ToHarmony(AutoCachePatch);
 
     static Instances()
     {
@@ -64,7 +65,7 @@ public static class Instances<T> where T : Component
     /// <returns></returns>
     public static T GetOrAdd(GameObject go)
     {
-        T ret = Get(go);
+        T? ret = Get(go);
 
         if (ret == null)
         {
@@ -98,11 +99,11 @@ public static class Instances<T> where T : Component
     /// </summary>
     /// <param name="go">The <see cref="GameObject"/> to be checked for a component of type <typeparamref name="T"/>.</param>
     /// <returns>The component, or <see langword="null"/> if it wasn't on the object.</returns>
-    public static T Get(GameObject go)
+    public static T? Get(GameObject go)
     {
-        if (cache.TryGetValue(go, out T obj)) return obj;
+        if (cache.TryGetValue(go, out T? obj)) return obj;
 
-        T val = go.GetComponent<T>();
+        T? val = go.GetComponent<T>();
         if (val != null)
         {
             cache[go] = val;
@@ -114,11 +115,28 @@ public static class Instances<T> where T : Component
     }
 
     /// <summary>
+    /// Tries to get from cache. If it fails, it will return <see langword="null"/>. Works best with <see cref="TryAutoCache"/>.
+    /// </summary>
+    /// <param name="go">Any gameobject, likely one in the cache</param>
+    /// <param name="component">A cached component, if <see langword="true"/> is returned. Otherwise <see langword="null"/></param>
+    /// <returns></returns>
+    public static bool TryGetFromCache(GameObject go, [NotNullWhen(true)] out T? component)
+    {
+        if (go.INOC())
+        {
+            component = null;
+            return false;
+        }
+
+        return cache.TryGetValue(go, out component);
+    }
+
+    /// <summary>
     /// Get the component from the cache using the Transform's <see cref="Component.gameObject"/>.
     /// </summary>
     /// <param name="t"></param>
     /// <returns></returns>
-    public static T Get(Transform t) => Get(t.gameObject);
+    public static T? Get(Transform t) => Get(t.gameObject);
 
     /// <summary>
     /// Whether or not the cache has <paramref name="go"/> in it.
@@ -139,7 +157,7 @@ public static class Instances<T> where T : Component
     /// </summary>
     /// <param name="t">The transform down the hierarchy to look upwards from</param>
     /// <returns>Whether any transform in the upward hierarchy has a <typeparamref name="T"/> component.</returns>
-    public static Transform HasUpwards(Transform t)
+    public static Transform? HasUpwards(Transform t)
     {
         bool has = Has(t.gameObject);
 
@@ -152,9 +170,9 @@ public static class Instances<T> where T : Component
         return HasUpwards(t.parent);
     }
 
-    private static T GetUpwardsImpl(Transform t)
+    private static T? GetUpwardsImpl(Transform t)
     {
-        T ret = Get(t);
+        T? ret = Get(t);
 
         if (ret != null)
             return ret;
@@ -172,9 +190,9 @@ public static class Instances<T> where T : Component
     /// </summary>
     /// <param name="t">The Transforms whose parents to check.</param>
     /// <returns>The first component found going upwards from <paramref name="t"/>, or null if there are none.</returns>
-    public static T GetUpwards(Transform t)
+    public static T? GetUpwards(Transform t)
     {
-        Transform hup = HasUpwards(t);
+        Transform? hup = HasUpwards(t);
         if (hup != null) return Get(hup.gameObject);
         else return GetUpwardsImpl(t);
     }
@@ -185,7 +203,7 @@ public static class Instances<T> where T : Component
     /// </summary>
     /// <param name="go">The GameObject whose parents to check.</param>
     /// <returns>The first component found going upwards from <paramref name="go"/>, or null if there are none.</returns>
-    public static T GetUpwards(GameObject go) => GetUpwards(go.transform);
+    public static T? GetUpwards(GameObject go) => GetUpwards(go.transform);
 
     /// <summary>
     /// Get the <typeparamref name="T"/> in immediate children.
@@ -193,9 +211,9 @@ public static class Instances<T> where T : Component
     /// <param name="go"></param>
     /// <param name="cacheOnly">Whether or not to only check the cache.</param>
     /// <returns>The component if it was found, or <see langword="null"/> if it wasn't.</returns>
-    public static T GetInImmediateChildren(GameObject go, bool cacheOnly = true)
+    public static T? GetInImmediateChildren(GameObject go, bool cacheOnly = true)
     {
-        T comp = null;
+        T? comp = null;
         foreach (Transform child in go)
         {
             if (cacheOnly && Has(child)) comp = Get(child);
@@ -216,14 +234,14 @@ public static class Instances<T> where T : Component
         triedAutocache = true;
 
 #if DEBUG
-        string asmName = typeof(T).Assembly.GetName().Name;
-        if (asmName.StartsWith("UnityEngine"))
+        string? asmName = typeof(T).Assembly.GetName().Name;
+        if (asmName?.StartsWith("UnityEngine") ?? false)
             JeviLib.Warn($"The component {typeof(T).FullName} from the engine assembly {asmName} is likely implemented exclusively in native code! It likely will not be able to be autocached as a result.");
 #endif
 
         BindingFlags methodFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
         Type type = typeof(T);
-        MethodInfo patcho = type.GetMethod("Awake", methodFlags) ?? type.GetMethod("Start", methodFlags);
+        MethodInfo? patcho = type.GetMethod("Awake", methodFlags) ?? type.GetMethod("Start", methodFlags);
         if (patcho == null) return false;
 
         try
