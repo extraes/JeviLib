@@ -1,24 +1,34 @@
-﻿using BoneLib;
-using MelonLoader;
+﻿using MelonLoader;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using UnhollowerBaseLib;
 using UnityEngine.Rendering;
 using UnityEngine;
 using System.Runtime.InteropServices;
 using System.Reflection;
 using UnityEngine.Rendering.Universal;
+using Il2CppInterop.Runtime;
+using MelonLoader.NativeUtils;
+using Il2CppInterop.Common;
 
 namespace Jevil.PostProcessing;
 
 internal static class PostProcessingInternal
 {
     internal static AssetBundle postProcessingBundle;
+    static readonly List<object> neverCollect = new();
+    internal static event Action<ScriptableRenderContext, RenderingData>? ExecuteRenderPass;
 
-    internal static event Action<ScriptableRenderContext, RenderingData> ExecuteRenderPass;
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate void Patch_ScriptableRenderer_ExecuteRenderPass(
+        IntPtr _this,                       //ScriptableRenderer _this, 
+        ScriptableRenderContext context,    //ScriptableRenderContext context, 
+        IntPtr renderPass,                  //ref ScriptableRenderPass renderPass,
+        IntPtr renderingData,               //ref RenderingData renderingData,
+        IntPtr nativeMethodInfo             //ref MethodInfo nativeMethodInfo,
+        );
 
     private delegate void NativeSignature_ScriptableRenderer_ExecuteRenderPass(
         IntPtr _this,                       //ScriptableRenderer _this, 
@@ -28,6 +38,7 @@ internal static class PostProcessingInternal
         IntPtr nativeMethodInfo             //ref MethodInfo nativeMethodInfo,
         );
 
+    private static NativeHook<NativeSignature_ScriptableRenderer_ExecuteRenderPass> hook;
     private static NativeSignature_ScriptableRenderer_ExecuteRenderPass _original_ExecuteRenderPass;
 
     private static Material _blitMat;
@@ -37,7 +48,7 @@ internal static class PostProcessingInternal
 
     internal static void Init()
     {
-        byte[] bytes = null;
+        byte[] bytes = null!;
         string bundleName = Utilities.IsPlatformQuest() ? "PostProcessingQuest.bundle" : "PostProcessing.bundle";
         JeviLib.instance.Assembly.UseEmbeddedResource("Jevil.Resources." + bundleName, b => bytes = b);
         postProcessingBundle = AssetBundle.LoadFromMemory(bytes);
@@ -58,19 +69,30 @@ internal static class PostProcessingInternal
 
     internal static unsafe void PerformNativeHook()
     {
-        NativeSignature_ScriptableRenderer_ExecuteRenderPass patch = NativeMethodPatch_ScriptableRenderer_ExecuteRenderPass;
+        Patch_ScriptableRenderer_ExecuteRenderPass patch = NativeMethodPatch_ScriptableRenderer_ExecuteRenderPass;
+        neverCollect.Add(patch); // prevent "A callback was made on a garbage collected delegate of type 'JeviLib!Jevil.PostProcessing.PostProcessingInternal+Patch_ScriptableRenderer_ExecuteRenderPass::Invoke'."
 
         // hardcoding, so hype. possible todo: look for the field name by iterating getfields?
-        string nativeName = Utilities.IsPlatformQuest()
-                          ? "NativeMethodInfoPtr_ExecuteRenderPass_Private_Void_ScriptableRenderContext_ScriptableRenderPass_RenderingData_0"
-                          : "NativeMethodInfoPtr_ExecuteRenderPass_Private_Void_ScriptableRenderContext_ScriptableRenderPass_byref_RenderingData_0";
-        var nativeMethodPtr = *(IntPtr*)(IntPtr)typeof(ScriptableRenderer).GetField(nativeName, BindingFlags.Static | BindingFlags.NonPublic).GetValue(null);
+        //string nativeName = Utilities.IsPlatformQuest()
+        //                  ? throw new NotImplementedException("PostProcessing on quest needs method pointer name") /*"NativeMethodInfoPtr_ExecuteRenderPass_Private_Void_ScriptableRenderContext_ScriptableRenderPass_RenderingData_0"*/
+        //                  : "NativeMethodInfoPtr_ExecuteRenderPass_Private_Void_ScriptableRenderContext_ScriptableRenderPass_byref_RenderingData_0";
+        //var nativeMethodPtr = *(IntPtr*)(IntPtr)typeof(ScriptableRenderer).GetField(nativeName, BindingFlags.Static | BindingFlags.NonPublic).GetValue(null);
+        var nativeMethodPtr = *(IntPtr*)(IntPtr)Il2CppInteropUtils.GetIl2CppMethodInfoPointerFieldForGeneratedMethod(typeof(ScriptableRenderer).GetMethod(nameof(ScriptableRenderer.ExecuteRenderPass))).GetValue(null)!;
 
-        var managedPatchPtr = patch.Method.MethodHandle.GetFunctionPointer();
+        //Patching.Hook.OntoMethod(typeof(ScriptableRenderer).GetMethod(nameof(ScriptableRenderer.ExecuteRenderPass))!, () => JeviLib.Log("uwe bole"));
 
+        //var managedPatchPtr = patch.Method.MethodHandle.GetFunctionPointer();
+        IntPtr managedPatchPtr = Marshal.GetFunctionPointerForDelegate(patch);
+
+        //hook = new((IntPtr)(&nativeMethodPtr), managedPatchPtr);
+        //hook.Attach();
+        //hook = new()
+#pragma warning disable CS0618 // Type or member is obsolete
         MelonUtils.NativeHookAttach((IntPtr)(&nativeMethodPtr), managedPatchPtr);
+#pragma warning restore CS0618 // Type or member is obsolete
 
         _original_ExecuteRenderPass = Marshal.GetDelegateForFunctionPointer<NativeSignature_ScriptableRenderer_ExecuteRenderPass>(nativeMethodPtr);
+        //_original_ExecuteRenderPass = Marshal.GetDelegateForFunctionPointer<NativeSignature_ScriptableRenderer_ExecuteRenderPass>();
     }
 
     private static void NativeMethodPatch_ScriptableRenderer_ExecuteRenderPass(IntPtr _this,                       //ScriptableRenderer _this, 
@@ -81,6 +103,7 @@ internal static class PostProcessingInternal
         )
     {
         // makes this, effectively, a postfix
+        //hook.Trampoline(_this, context, renderPass, renderingData, nativeMethodInfo);
         _original_ExecuteRenderPass(_this, context, renderPass, renderingData, nativeMethodInfo);
 
         ScriptableRenderPass srp = new(renderPass);
@@ -103,7 +126,7 @@ internal static class PostProcessingInternal
         lastRenderedFrames[camId] = currFrame;
 
         //postfix
-        ExecuteRenderPass.InvokeActionSafe(context, rendData);
+        ExecuteRenderPass.InvokeSafeSync(context, rendData);
     }
 
     internal static void Blitlike(CommandBuffer cmd, RenderTargetIdentifier src, RenderTargetIdentifier dst)

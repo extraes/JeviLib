@@ -34,7 +34,7 @@ public static class SharedPostProcessingMaterials
     /// </summary>
     public static class ClipFar
     {
-        private static Material material;
+        private static Material? material;
         const string ASSET_PATH = "Assets/PostProcess/ClipFar.shader";
         /// <summary>
         /// The material made from the ClipFar Shader.
@@ -77,7 +77,7 @@ public static class SharedPostProcessingMaterials
     /// </summary>
     public static class ColorSqr
     {
-        private static Material material;
+        private static Material? material;
         const string ASSET_PATH = "Assets/PostProcess/ColorSqr.shader";
         /// <summary>
         /// The material made from the ColorSqr Shader.
@@ -113,7 +113,7 @@ public static class SharedPostProcessingMaterials
     /// </summary>
     public static class CornerScreen
     {
-        private static Material material;
+        private static Material? material;
         const string ASSET_PATH = "Assets/PostProcess/CornerScreen.shader";
         /// <summary>
         /// The material made from the CornerScreen Shader.
@@ -149,7 +149,7 @@ public static class SharedPostProcessingMaterials
     /// </summary>
     public static class SideScreen
     {
-        private static Material material;
+        private static Material? material;
         const string ASSET_PATH = "Assets/PostProcess/SideScreen.shader";
         /// <summary>
         /// The material made from the SideScreen Shader.
@@ -185,7 +185,7 @@ public static class SharedPostProcessingMaterials
     /// </summary>
     public static class Depth
     {
-        private static Material material;
+        private static Material? material;
         const string ASSET_PATH = "Assets/PostProcess/Depth.shader";
         /// <summary>
         /// The material made from the Depth Shader.
@@ -229,7 +229,7 @@ public static class SharedPostProcessingMaterials
     /// </summary>
     public static class DepthFlip
     {
-        private static Material material;
+        private static Material? material;
         const string ASSET_PATH = "Assets/PostProcess/DepthFlip.shader";
         /// <summary>
         /// The material made from the DepthFlip Shader.
@@ -265,7 +265,7 @@ public static class SharedPostProcessingMaterials
     /// </summary>
     public static class DepthRefract
     {
-        private static Material material;
+        private static Material? material;
         const string ASSET_PATH = "Assets/PostProcess/DepthRefract.shader";
         /// <summary>
         /// The material made from the DepthRefract Shader.
@@ -317,7 +317,7 @@ public static class SharedPostProcessingMaterials
     /// </summary>
     public static class DepthSaturation
     {
-        private static Material material;
+        private static Material? material;
         const string ASSET_PATH = "Assets/PostProcess/DepthSaturation.shader";
         /// <summary>
         /// The material made from the DepthSaturation Shader.
@@ -353,7 +353,7 @@ public static class SharedPostProcessingMaterials
     /// </summary>
     public static class DepthShift
     {
-        private static Material material;
+        private static Material? material;
         const string ASSET_PATH = "Assets/PostProcess/DepthWarble.shader";
         /// <summary>
         /// The material made from the DepthShift Shader ('DepthWarble').
@@ -397,7 +397,7 @@ public static class SharedPostProcessingMaterials
     /// </summary>
     public static class Fisheye
     {
-        private static Material material;
+        private static Material? material;
         const string ASSET_PATH = "Assets/PostProcess/Fisheye.shader";
         /// <summary>
         /// The material made from the Fisheye Shader.
@@ -437,7 +437,7 @@ public static class SharedPostProcessingMaterials
     /// </summary>
     public static class HorizontalMirror
     {
-        private static Material material;
+        private static Material? material;
         const string ASSET_PATH = "Assets/PostProcess/HorizontalMirror.shader";
         /// <summary>
         /// The material made from the HorizontalMirror Shader.
@@ -469,7 +469,7 @@ public static class SharedPostProcessingMaterials
     /// </summary>
     public static class InterleavedMirror
     {
-        private static Material material;
+        private static Material? material;
         const string ASSET_PATH = "Assets/PostProcess/InterleavedMirror.shader";
         /// <summary>
         /// The material made from the InterleavedMirror Shader.
@@ -506,7 +506,7 @@ public static class SharedPostProcessingMaterials
     /// </summary>
     public static class Pixelate
     {
-        private static Material material;
+        private static Material? material;
         const string ASSET_PATH = "Assets/PostProcess/Pixelate.shader";
         /// <summary>
         /// The material made from the Pixelate Shader.
@@ -546,7 +546,7 @@ public static class SharedPostProcessingMaterials
     /// </summary>
     public static class Refract
     {
-        private static Material material;
+        private static Material? material;
         const string ASSET_PATH = "Assets/PostProcess/Refract.shader";
         /// <summary>
         /// The material made from the Refract Shader.
@@ -586,7 +586,7 @@ public static class SharedPostProcessingMaterials
     /// </summary>
     public static class Tint
     {
-        private static Material material;
+        private static Material? material;
         const string ASSET_PATH = "Assets/PostProcess/Tint.shader";
         /// <summary>
         /// The m
@@ -627,5 +627,45 @@ public static class SharedPostProcessingMaterials
         /// The minimum value the saturation must be after being multiplied by SaturationMult
         /// </summary>
         public static readonly ShaderProperty<float> MinSaturation = new("_MinSaturation_PostMult", Material);
+    }
+
+    /// <summary>
+    /// Keys out a color with a certain tolerance. This is useful for green screens, but can be used for any color.
+    /// </summary>
+    public static class GreenScreen
+    {
+        private static Material? material;
+        const string ASSET_PATH = "Assets/PostProcess/GreenScreen.shader";
+        /// <summary>
+        /// The m
+        /// </summary>
+        public static Material Material
+        {
+            get
+            {
+                if (material.INOC())
+                    material = PostProcessingInternal.CreateMaterialFromShader(ASSET_PATH);
+                return material;
+            }
+        }
+
+        /// <summary>
+        /// Adds the postprocessing effect to the Jevil Postprocessing stack.
+        /// </summary>
+        public static void Enable() => PostProcessingManager.AddToStack(Material);
+
+        /// <summary>
+        /// Removes the postprocessing effect from the Jevil Postprocessing stack.
+        /// </summary>
+        public static void Disable() => PostProcessingManager.RemoveFromStack(Material);
+
+        /// <summary>
+        /// Controls the maximum summed difference between the components of the keyed color and the sampled color from _AltTex.
+        /// </summary>
+        public static readonly ShaderProperty<float> Tolerance = new("_MaxDifference", Material);
+        /// <summary>
+        /// The color to key out.
+        /// </summary>
+        public static readonly ShaderProperty<Color> KeyColor = new("_ClipColor", Material);
     }
 }

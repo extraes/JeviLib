@@ -34,7 +34,7 @@ public readonly struct ShaderProperty<T> where T : unmanaged
     public ShaderProperty(string propertyName, Material getFrom)
     {
         nameId = Shader.PropertyToID(propertyName);
-        startingValue = GetValueFromMaterialImpl<T>(nameId, getFrom);
+        startingValue = GetValueFromMaterialImpl(nameId, getFrom);
     }
 
     /// <summary>
@@ -54,7 +54,7 @@ public readonly struct ShaderProperty<T> where T : unmanaged
     /// <returns>The value that is set at <see cref="nameId"/> on <paramref name="mat"/>.</returns>
     public T GetFrom(Material mat)
     {
-        return GetValueFromMaterialImpl<T>(nameId, mat);
+        return GetValueFromMaterialImpl(nameId, mat);
     }
 
     /// <summary>
@@ -96,7 +96,7 @@ public readonly struct ShaderProperty<T> where T : unmanaged
         else throw new NotSupportedException($"Unsupported {nameof(ShaderProperty<T>)} type: {typeof(T).FullName}");
     }
 
-    static TRet GetValueFromMaterialImpl<TRet>(int nameId, Material mat) where TRet : unmanaged
+    static T GetValueFromMaterialImpl(int nameId, Material mat)
     {
         object holder;
         T value = default(T); // unlocks the powers of PATTERN MATCHING!
@@ -130,9 +130,9 @@ public readonly struct ShaderProperty<T> where T : unmanaged
         {
             holder = mat.GetVector(nameId);
         }
-        else throw new NotSupportedException($"Unsupported Shader Property type: {typeof(TRet).FullName}");
+        else throw new NotSupportedException($"Unsupported Shader Property type: {typeof(T).FullName}");
 
-        return (TRet)holder;
+        return (T)holder;
     }
 
     /// <summary>
