@@ -13,7 +13,7 @@ internal static class UniTaskCeciler
     public static Action<string> Log;
     public static Action<string> Error;
 
-    public static void Execute(string unitaskAsmPath, string il2cppMscorlibPath, string unhollowerBaselibPath, string userData)
+    public static void Execute(string unitaskAsmPath, string il2cppMscorlibPath, string interopRuntimePath, string userData)
     {
 #if DEBUG
         if (Log == null || Error == null) 
@@ -22,10 +22,10 @@ internal static class UniTaskCeciler
 
         Log($"UniTask assembly path: {unitaskAsmPath}");
         Log($"Unhollowed IL2CPP mscorlib assembly path: {il2cppMscorlibPath}");
-        Log($"UnhollowerBaseLib assembly path: {unhollowerBaselibPath}");
+        Log($"Il2CppInterop.Runtime assembly path: {interopRuntimePath}");
 
         string backupsFolder = Path.Combine(userData, "JevilSM", "Backups");
-        string backupFile = Path.Combine(backupsFolder, "UniTask.bak.dll");
+        string backupFile = Path.Combine(backupsFolder, "Il2CppUniTask.bak.dll");
 
         if (!Directory.Exists(backupsFolder))
         {
@@ -41,8 +41,8 @@ internal static class UniTaskCeciler
         using MemoryStream tempStream = new();
         Log("Success!");
 
-        Log("Reading UnhollowerBaseLib for type reference...");
-        TypeDefinition il2cppObjectRef = AssemblyDefinition.ReadAssembly(unhollowerBaselibPath).MainModule.GetType("UnhollowerBaseLib.Il2CppObjectBase");
+        Log("Reading Il2CppInterop for type reference...");
+        TypeDefinition il2cppObjectRef = AssemblyDefinition.ReadAssembly(interopRuntimePath).MainModule.GetType("Il2CppInterop.Runtime.InteropTypes.Il2CppObjectBase");
         Log("Success!");
 
         Log("Reading Il2Cppmscorlib for type references...");
@@ -84,15 +84,15 @@ internal static class UniTaskCeciler
 
 
         Log("Looking for UniTask type definition");
-        TypeDefinition uniTaskDef = utMod.GetType("Cysharp.Threading.Tasks.UniTask");
+        TypeDefinition uniTaskDef = utMod.GetType("Il2CppCysharp.Threading.Tasks.UniTask");
         Log("Success!");
 
         Log("Looking for UniTask Awaiter type definitions...");
-        TypeDefinition uniTaskAwaiterGeneric = utMod.GetType("Cysharp.Threading.Tasks.UniTask`1/Awaiter");
-        TypeDefinition uniTaskAwaiterUntyped = utMod.GetType("Cysharp.Threading.Tasks.UniTask/Awaiter");
-        TypeDefinition yieldAwaiter = utMod.GetType("Cysharp.Threading.Tasks.YieldAwaitable/Awaiter");
-        TypeDefinition switchToMainThreadAwaiter = utMod.GetType("Cysharp.Threading.Tasks.SwitchToMainThreadAwaitable/Awaiter");
-        TypeDefinition switchToThreadPoolAwaiter = utMod.GetType("Cysharp.Threading.Tasks.SwitchToThreadPoolAwaitable/Awaiter");
+        TypeDefinition uniTaskAwaiterGeneric = utMod.GetType("Il2CppCysharp.Threading.Tasks.UniTask`1/Awaiter");
+        TypeDefinition uniTaskAwaiterUntyped = utMod.GetType("Il2CppCysharp.Threading.Tasks.UniTask/Awaiter");
+        TypeDefinition yieldAwaiter = utMod.GetType("Il2CppCysharp.Threading.Tasks.YieldAwaitable/Awaiter");
+        TypeDefinition switchToMainThreadAwaiter = utMod.GetType("Il2CppCysharp.Threading.Tasks.SwitchToMainThreadAwaitable/Awaiter");
+        TypeDefinition switchToThreadPoolAwaiter = utMod.GetType("Il2CppCysharp.Threading.Tasks.SwitchToThreadPoolAwaitable/Awaiter");
         Log("Success!");
 
 
@@ -174,42 +174,52 @@ internal static class UniTaskCeciler
 
         // pasting the IL from some sample methods real quick
         Log(" - Filling in method body for the generic awaiter...");
+        untypedProc.Emit(OpCodes.Nop);
         genericProc.Emit(OpCodes.Ldarg_0);
         genericProc.Emit(OpCodes.Ldarg_1); //ldarg1 because not static method
         genericProc.Emit(OpCodes.Call, monoActionToIl2ActionUntypedRef);
         genericProc.Emit(OpCodes.Call, uniTaskAwaiterOnCompletedGeneric);
+        untypedProc.Emit(OpCodes.Nop);
         genericProc.Emit(OpCodes.Ret);
         Log(" - Success!");
 
         Log(" - Filling in method body for the non-generic awaiter...");
+        untypedProc.Emit(OpCodes.Nop);
         untypedProc.Emit(OpCodes.Ldarg_0);
         untypedProc.Emit(OpCodes.Ldarg_1); //ldarg1 because not static method
         untypedProc.Emit(OpCodes.Call, monoActionToIl2ActionUntypedRef);
         untypedProc.Emit(OpCodes.Call, uniTaskAwaiterOnCompletedUntyped);
+        untypedProc.Emit(OpCodes.Nop);
         untypedProc.Emit(OpCodes.Ret);
         Log(" - Success!");
 
         Log(" - Filling in method body for yield awaiter");
+        yieldProc.Emit(OpCodes.Nop);
         yieldProc.Emit(OpCodes.Ldarg_0);
         yieldProc.Emit(OpCodes.Ldarg_1);
         yieldProc.Emit(OpCodes.Call, monoActionToIl2ActionUntypedRef);
         yieldProc.Emit(OpCodes.Call, yieldAwaiterOnCompleted);
+        yieldProc.Emit(OpCodes.Nop);
         yieldProc.Emit(OpCodes.Ret);
         Log(" - Success!");
 
         Log(" - Filling in method body for main thread awaiter");
+        mainThreadProc.Emit(OpCodes.Nop);
         mainThreadProc.Emit(OpCodes.Ldarg_0);
         mainThreadProc.Emit(OpCodes.Ldarg_1);
         mainThreadProc.Emit(OpCodes.Call, monoActionToIl2ActionUntypedRef);
         mainThreadProc.Emit(OpCodes.Call, yieldAwaiterOnCompleted);
+        mainThreadProc.Emit(OpCodes.Nop);
         mainThreadProc.Emit(OpCodes.Ret);
         Log(" - Success!");
 
         Log(" - Filling in method body for thread pool awaiter");
+        threadPoolProc.Emit(OpCodes.Nop);
         threadPoolProc.Emit(OpCodes.Ldarg_0);
         threadPoolProc.Emit(OpCodes.Ldarg_1);
         threadPoolProc.Emit(OpCodes.Call, monoActionToIl2ActionUntypedRef);
         threadPoolProc.Emit(OpCodes.Call, yieldAwaiterOnCompleted);
+        threadPoolProc.Emit(OpCodes.Nop);
         threadPoolProc.Emit(OpCodes.Ret);
         Log(" - Success!");
 

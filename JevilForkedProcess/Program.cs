@@ -51,10 +51,10 @@ internal class Program
         string logPath = Path.Combine(jsmPath, "FixerLog.log");
         string newSmPath = Path.Combine(jsmPath, "Il2Cpp.dll");
         string il2SmPath = Path.Combine(userDataFolder, "..", "MelonLoader", "Dependencies", "SupportModules", "Il2Cpp.dll");
-        string unitaskPath = Path.Combine(userDataFolder, "..", "MelonLoader", "Managed", "UniTask.dll");
-        string il2MscorlibPath = Path.Combine(userDataFolder, "..", "MelonLoader", "Managed", "Il2Cppmscorlib.dll");
-        string unhollowerBasePath = Path.Combine(userDataFolder, "..", "MelonLoader", "Managed", "UnhollowerBaseLib.dll");
-        string unityCoreModulePath = Path.Combine(userDataFolder, "..", "MelonLoader", "Managed", "UnityEngine.CoreModule.dll");
+        string unitaskPath = Path.Combine(userDataFolder, "..", "MelonLoader", "Il2CppAssemblies", "Il2CppUniTask.dll");
+        string il2MscorlibPath = Path.Combine(userDataFolder, "..", "MelonLoader", "Il2CppAssemblies", "Il2Cppmscorlib.dll");
+        string interopRuntimePath = Path.Combine(userDataFolder, "..", "MelonLoader", "net6", "Il2CppInterop.Runtime.dll");
+        string unityCoreModulePath = Path.Combine(userDataFolder, "..", "MelonLoader", "Il2CppAssemblies", "UnityEngine.CoreModule.dll");
         if (!Directory.Exists(jsmPath)) Directory.CreateDirectory(jsmPath);
         if (File.Exists(logPath)) File.Delete(logPath);
         logFile = File.CreateText(logPath);
@@ -63,11 +63,12 @@ internal class Program
         WaitForFileToBeReadable(il2SmPath);
         Log("BONELAB exited, continuing execution.");
 
-        Log("Support module updating can now begin.");
-        Jevil.Patching.SupportModuleOverwriter.Log = Log;
-        Jevil.Patching.SupportModuleOverwriter.Error = Error;
-        Jevil.Patching.SupportModuleOverwriter.Execute(newSmPath, il2SmPath);
-        Log("Support module updating completed successfully.");
+        // todo: test coroutines
+        //Log("Support module updating can now begin.");
+        //Jevil.Patching.SupportModuleOverwriter.Log = Log;
+        //Jevil.Patching.SupportModuleOverwriter.Error = Error;
+        //Jevil.Patching.SupportModuleOverwriter.Execute(newSmPath, il2SmPath);
+        //Log("Support module updating completed successfully.");
 
         Log("UnityEngine CoreModule modification can now begin");
         Jevil.Patching.UnityCoreModuleCeciler.Log = Log;
@@ -78,7 +79,7 @@ internal class Program
         Log("UniTask modification can now begin.");
         Jevil.Patching.UniTaskCeciler.Log = Log;
         Jevil.Patching.UniTaskCeciler.Error = Error;
-        Jevil.Patching.UniTaskCeciler.Execute(unitaskPath, il2MscorlibPath, unhollowerBasePath, userDataFolder);
+        Jevil.Patching.UniTaskCeciler.Execute(unitaskPath, il2MscorlibPath, interopRuntimePath, userDataFolder);
         Log("Successfully replaced IL2CPP support module and patched UniTask.dll!");
         Log("For users: You should now be able to use any mod that requires JeviLib v2.0.0 or higher");
         Log("For developers: Your coroutines can now yield other coroutines or yield WaitForSeconds/WaitForSecondsRealtime, and it will work as expected. You can also await a UniTask and UniTask<T> from a Task");

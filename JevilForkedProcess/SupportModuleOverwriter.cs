@@ -24,6 +24,8 @@ internal static class SupportModuleOverwriter
     /// </summary>
     public static void Execute(string newSmPath, string currSmPath)
     {
+
+        return;
 #if DEBUG
         if (Log == null || Error == null)
             throw new NullReferenceException("Logging callbacks cannot be null.");

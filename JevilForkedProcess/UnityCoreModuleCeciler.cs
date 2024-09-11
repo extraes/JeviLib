@@ -15,6 +15,9 @@ internal static class UnityCoreModuleCeciler
 
     public static void Execute(string unityCorePath, string il2cppMscorlibPath, string userData)
     {
+
+        //todo
+        return;
         Log("UnityEngine CoreModule path: " + unityCorePath);
         Log("IL2CPP MSCorlib path: " + il2cppMscorlibPath);
         
