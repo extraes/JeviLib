@@ -3,21 +3,11 @@ using System.Reflection;
 using System.Resources;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-
-[assembly: AssemblyTitle(Jevil.JevilBuildInfo.NAME)]
-[assembly: AssemblyDescription("")]
-[assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany(Jevil.JevilBuildInfo.COMPANY)]
-[assembly: AssemblyProduct(Jevil.JevilBuildInfo.NAME)]
-[assembly: AssemblyCopyright("Created by " + Jevil.JevilBuildInfo.AUTHOR)]
 [assembly: AssemblyTrademark(Jevil.JevilBuildInfo.COMPANY)]
 [assembly: AssemblyCulture("")]
 [assembly: ComVisible(false)]
-//[assembly: Guid("")]
-[assembly: AssemblyVersion(Jevil.JevilBuildInfo.VERSION)]
-[assembly: AssemblyFileVersion(Jevil.JevilBuildInfo.VERSION)]
-[assembly: NeutralResourcesLanguage("en")]
-[assembly: InternalsVisibleTo(Jevil.Patching.DynTools.dynamicAsmName)]
+[assembly: InternalsVisibleTo(Jevil.Patching.DynTools.DYNAMIC_ASM_NAME)]
+[assembly: InternalsVisibleTo("JevilPlugin")]
 [assembly: MelonInfo(typeof(Jevil.JeviLib), Jevil.JevilBuildInfo.NAME, Jevil.JevilBuildInfo.VERSION, Jevil.JevilBuildInfo.AUTHOR, Jevil.JevilBuildInfo.DOWNLOAD_LINK)]
 [assembly: MelonPriority(-20925)] // rb rd
 
