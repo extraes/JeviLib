@@ -4,7 +4,7 @@ using System;
 namespace Jevil;
 
 /// <summary>
-/// Values defined 
+/// Values defined to warn your users to update their JeviLib version if necessary
 /// </summary>
 public static class JevilBuildInfo
 {
@@ -15,7 +15,7 @@ public static class JevilBuildInfo
     /// <summary>
     /// The version of JeviLib your mod will be built against.
     /// </summary>
-    public const string VERSION = "2.2.0";
+    public const string VERSION = "2.3.0";
 
     /// <summary>
     /// The Thunderstore page for JeviLib. I'm not sure why you'd need this but go for it.
@@ -27,6 +27,15 @@ public static class JevilBuildInfo
     /// </summary>
     public const bool DEBUG
 #if DEBUG
+        = true;
+#else
+        = false;
+#endif
+    /// <summary>
+    /// Whether your mod was built with a version of JeviLib that was built with a self-contained (no external mod deps) configuration.
+    /// </summary>
+    public const bool SELFCONTAINED
+#if SELFCONTAINED
         = true;
 #else
         = false;
@@ -55,4 +64,9 @@ public static class JevilBuildInfo
 
         return runtimeVer >= compiledVer;
     }
+
+    /// <summary>
+    /// Whether your mod is running with a self-contained version of JeviLib.
+    /// </summary>
+    public static bool RuntimeSelfContained() => SELFCONTAINED;
 }
