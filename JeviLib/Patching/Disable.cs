@@ -10,6 +10,8 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 
+#if false
+
 namespace Jevil.Patching;
 
 /// <summary>
@@ -17,12 +19,10 @@ namespace Jevil.Patching;
 /// </summary>
 public static class Disable
 {
-    static readonly HarmonyMethod skipHMethod = typeof(Disable).GetMethod(nameof(SkipInternal), BindingFlags.Static | BindingFlags.NonPublic).ToNewHarmonyMethod();
+    static readonly HarmonyMethod skipHMethod = Utilities.ToHarmony(Disable.SkipInternal);
     private static bool SkipInternal() => false;
     static int disableWhenCount = 0;
     internal static List<Func<bool>> disableWhenDelegates = new();
-    internal static Delegate GetDelegate(int idx) => disableWhenDelegates[idx]; // didnt feel like learning how to have an expression get 
-    private static readonly MethodInfo GetDelegate_Info = typeof(Disable).GetMethod(nameof(GetDelegate), BindingFlags.Static | BindingFlags.NonPublic);
 
     /// <summary>
     /// Get all methods dynamically created from <see cref="When(Func{bool}, MethodInfo)"/>.
@@ -51,7 +51,7 @@ public static class Disable
             return false;
         }
 
-        MethodInfo minf = Utilities.GetMethodFromString(namezpaze, clazz, method, paramTypes);
+        MethodInfo? minf = Utilities.GetMethodFromString(namezpaze, clazz, method, paramTypes);
         if (minf == null) return false;
         FromMethod(minf);
 
@@ -73,129 +73,151 @@ public static class Disable
     /// <param name="methodName">The name of the method. Should it be overridden and <paramref name="paramTypes"/> is null, the first method with the least parameters will be chosen.</param>
     /// <param name="paramTypes">The types of the parameters. You should use this if the method is overridden.</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static void FromMethod(Type hostType, string methodName, Type[] paramTypes = null) => FromMethod(hostType.GetMethodEasy(methodName, paramTypes));
+    public static void FromMethod(Type hostType, string methodName, Type[]? paramTypes = null) => FromMethod(hostType.GetMethodEasy(methodName, paramTypes));
 
     /// <summary>
     /// Disables a method. That is, using Harmony to patch it out using a Prefix that always returns <see langword="false"/> (which Harmony sees as "skip the patched method").
     /// </summary>
     /// <param name="toDisable"></param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static void FromMethod(MethodInfo toDisable)
+    public static void FromMethod(MethodInfo? toDisable)
     {
+        if (toDisable is null)
+            return;
         JeviLib.instance.HarmonyInstance.Patch(toDisable, prefix: skipHMethod);
     }
 
-    /// <summary>
-    /// Uses <see cref="Redirect"/> and <see cref="Hook"/> to patch out a method when <paramref name="whileThisIsExecuting"/> is executing, but before it has finished.
-    /// </summary>
-    /// <param name="methodToBeDisabled">The method to be disabled.</param>
-    /// <param name="whileThisIsExecuting"></param>
-    [Obsolete("WhenCalledFrom does not work; Use Redirect.FromMethod, Hook.OntoMethod, and Disable.When instead.", true)]
-    public static void WhenCalledFrom(MethodInfo methodToBeDisabled, MethodInfo whileThisIsExecuting)
-    {
-        //bool isExecuting = false;
-        //Redirect.FromMethod(whileThisIsExecuting, () => { isExecuting = true; });
-        //Hook.OntoMethod(whileThisIsExecuting, () => { isExecuting = false; });
-        //When(() => isExecuting, methodToBeDisabled);
-        throw new NotImplementedException("WhenCalledFrom does not work; Use Redirect.FromMethod, Hook.OntoMethod, and Disable.When instead.");
-    }
+    ///// <summary>
+    ///// Uses <see cref="Redirect"/> and <see cref="Hook"/> to patch out a method when <paramref name="whileThisIsExecuting"/> is executing, but before it has finished.
+    ///// </summary>
+    ///// <param name="methodToBeDisabled">The method to be disabled.</param>
+    ///// <param name="whileThisIsExecuting"></param>
+    //[Obsolete("WhenCalledFrom does not work; Use Redirect.FromMethod, Hook.OntoMethod, and Disable.When instead.", true)]
+    //public static void WhenCalledFrom(MethodInfo methodToBeDisabled, MethodInfo whileThisIsExecuting)
+    //{
+    //    //bool isExecuting = false;
+    //    //Redirect.FromMethod(whileThisIsExecuting, () => { isExecuting = true; });
+    //    //Hook.OntoMethod(whileThisIsExecuting, () => { isExecuting = false; });
+    //    //When(() => isExecuting, methodToBeDisabled);
+    //    throw new NotImplementedException("WhenCalledFrom does not work; Use Redirect.FromMethod, Hook.OntoMethod, and Disable.When instead.");
+    //}
 
-    /// <summary>
-    /// Skips a method when <paramref name="predicate"/> returns <see langword="true"/>.
-    /// </summary>
-    /// <param name="predicate">A method, lambda, or other delegate that returns a boolean value.</param>
-    /// <param name="toBeDisabled">The method to be disabled.</param>
-    /// <exception cref="ArgumentNullException">Either of the parameters are <see langword="null"/></exception>
-    public static void When(Func<bool> predicate, MethodInfo toBeDisabled)
-    {
-        // cover my ass to make sure shit doesnt break while messing around in such a critical field
-        if (predicate == null) throw new ArgumentNullException(nameof(predicate));
-        if (toBeDisabled == null) throw new ArgumentNullException(nameof(toBeDisabled));
+//    /// <summary>
+//    /// Skips a method when <paramref name="predicate"/> returns <see langword="true"/>.
+//    /// </summary>
+//    /// <param name="predicate">A method, lambda, or other delegate that returns a boolean value.</param>
+//    /// <param name="toBeDisabled">A delegate of the method to be disabled.</param>
+//    /// <exception cref="ArgumentNullException">Either of the parameters are <see langword="null"/></exception>
+//    public static void When(Func<bool> predicate, Delegate toBeDisabled)
+//    {
+//        When(predicate, toBeDisabled.Method);
+//    }
 
-        //if (predicate.Method.IsStatic)
-        //{
-        //    Log("Predicate is static, skipping dynamic method creation and directly patching.");
-        //    JeviLib.instance.HarmonyInstance.Patch(toBeDisabled, predicate.Method.ToNewHarmonyMethod());
-        //    return;
-        //}
+//    /// <summary>
+//    /// Skips a method when <paramref name="predicate"/> returns <see langword="true"/>.
+//    /// </summary>
+//    /// <param name="predicate">A method, lambda, or other delegate that returns a boolean value.</param>
+//    /// <param name="toBeDisabled">The method to be disabled.</param>
+//    /// <exception cref="ArgumentNullException">Either of the parameters are <see langword="null"/></exception>
+//    public static void When(Func<bool> predicate, MethodInfo toBeDisabled)
+//    {
+//        // cover my ass to make sure shit doesnt break while messing around in such a critical field
+//        if (predicate == null) throw new ArgumentNullException(nameof(predicate));
+//        if (toBeDisabled == null) throw new ArgumentNullException(nameof(toBeDisabled));
+//        Type delegateType = typeof(Func<bool>);
 
-        // have a redirection-specific identifier
-        int thisRedirNum = disableWhenCount++;
-        int thisDelegateIdx = disableWhenDelegates.Count;
-        disableWhenDelegates.Add(predicate);
+//        //if (predicate.Method.IsStatic)
+//        //{
+//        //    Log("Predicate is static, skipping dynamic method creation and directly patching.");
+//        //    JeviLib.instance.HarmonyInstance.Patch(toBeDisabled, predicate.Method.ToNewHarmonyMethod());
+//        //    return;
+//        //}
 
-        // get it, bob the builder, har har
-        TypeBuilder tb = DynTools.GetTypeBuilder("Disable_" + thisRedirNum);
-        MethodBuilder bob = tb.DefineMethod(toBeDisabled.Name + " _Disable_" + thisRedirNum,
-                                            MethodAttributes.Public | MethodAttributes.Static,
-                                            CallingConventions.Any,
-                                            typeof(bool),
-                                            new Type[0]);
+//        // have a redirection-specific identifier
+//        int thisRedirNum = disableWhenCount++;
+//        int thisDelegateIdx = disableWhenDelegates.Count;
+//        disableWhenDelegates.Add(predicate);
 
-        // used by callExp, dont need to pass into Expression.Block
-        // TDelegate dele = (TDelegate)Hook.GetDelegate(<idx>);
-        Expression delegateExp = Expression.Convert(Expression.Call(GetDelegate_Info, Expression.Constant(thisDelegateIdx)), typeof(Func<bool>));
-        // dele(param1, param2, param3, ...);
-        Expression callExp = Expression.Invoke(delegateExp);
-        LabelTarget retLabel = Expression.Label(typeof(bool), "RetLabel");
-        // return <!skipOriginal>;
-        Expression retExp = Expression.Return(retLabel, Expression.Not(callExp)); // because harmony expects false to mean "skip", but jevilib expects it to mean "dont skip"
-        Expression retLabelExp = Expression.Label(retLabel, Expression.Constant(true));
+//        // get it, bob the builder, har har
+//        TypeBuilder tb = DynTools.GetTypeBuilder("Disable_" + thisRedirNum);
+//        FieldBuilder funcHolder = tb.DefineField("forwardTo", delegateType, FieldAttributes.Private | FieldAttributes.Static);
+//        MethodBuilder bob = tb.DefineMethod(toBeDisabled.Name + " _Disable_" + thisRedirNum,
+//                                            MethodAttributes.Public | MethodAttributes.Static,
+//                                            CallingConventions.Any,
+//                                            typeof(bool),
+//                                            Array.Empty<Type>());
 
-        Log("Created expressions");
+//        MethodInfo invokeMethod = DynTools.GetInvokeMethod(delegateType);
+//        const bool INJECT_LOGGING = true;
 
-        BlockExpression bexp = Expression.Block(callExp, retExp, retLabelExp);
-        LambdaExpression lexp = Expression.Lambda(bexp);
-        lexp.CompileToMethod(bob);
+//        ILGenerator ilGen = bob.GetILGenerator();
+//        if (INJECT_LOGGING)
+//            ilGen.DeclareLocal(typeof(bool));
 
-        Type createdType = tb.CreateType();
-        Log($"Compiled patch method and created runtime type!");
-        Log($"Created: <asm={createdType.Assembly.GetName().Name}> <module={createdType.Module.Name}> {createdType.FullName}");
+//        ilGen.Emit(OpCodes.Ldsfld, funcHolder);
+//        ilGen.Emit(OpCodes.Callvirt, invokeMethod);
+//        ilGen.Emit(OpCodes.Ldc_I4_0); // ldc.i4.0 & Ceq are the ! in "!predicate()"
+//        ilGen.Emit(OpCodes.Ceq);
+//        if (INJECT_LOGGING)
+//        {
+//            ilGen.Emit(OpCodes.Stloc_0);
+//            ilGen.Emit(OpCodes.Ldstr, bob.Name + " - predicate returned ");
+//            ilGen.Emit(OpCodes.Ldloca_S, 0);
+//            ilGen.Emit(OpCodes.Call, typeof(bool).GetMethod("ToString", BindingFlags.Instance | BindingFlags.Public, Array.Empty<Type>())!);
+//            ilGen.Emit(OpCodes.Call, Utilities.AsInfo(LogExtern));
+//            ilGen.Emit(OpCodes.Ldloc_0);
+//        }
+//        ilGen.Emit(OpCodes.Ret);
 
+//        Type createdType = tb.CreateType() ?? throw new NullReferenceException("Created type is null");
+//        FieldInfo actionHolderBuilt = createdType.GetField(funcHolder.Name, BindingFlags.NonPublic | BindingFlags.Static) ?? throw new NullReferenceException("Delegate-holding field is null");
+//        actionHolderBuilt.SetValue(null, predicate);
+//        Log($"Compiled patch method and created runtime type!");
+//        Log($"Created: <asm={createdType.Assembly.GetName().Name}> <module={createdType.Module.Name}> {createdType.FullName}");
 
-        //MethodBase dynInfo = MethodBase.GetMethodFromHandle(bob.MethodHandle);
-        //SymbolExtensions.GetMethodInfo(dynInfo);
-        HarmonyMethod hPrefix = new(bob.GetMethodInfo());
+//        //MethodBase dynInfo = MethodBase.GetMethodFromHandle(bob.MethodHandle);
+//        //SymbolExtensions.GetMethodInfo(dynInfo);
+//        HarmonyMethod hPrefix = new(bob.GetMethodInfo());
 
-        JeviLib.instance.HarmonyInstance.Patch(toBeDisabled, prefix: hPrefix);
+//        MethodInfo patch = JeviLib.instance.HarmonyInstance.Patch(toBeDisabled, prefix: hPrefix);
+//        Log($"Resulting method: " + patch.FullDescription());
+//    }
 
-    }
+//    /// <summary>
+//    /// A combination of <see cref="Utilities.GetMethodFromString(string, string, string, string[])"/> and <see cref="When(Func{bool}, MethodInfo)"/>.
+//    /// </summary>
+//    /// <param name="predicate">The method or lambda to determine whether the method will be disabled.</param>
+//    /// <param name="namezpaze">The Type's namespace. This will be used to look through assemblies with this namespace defined.</param>
+//    /// <param name="clazz">The Type's name.</param>
+//    /// <param name="method">The method's name.</param>
+//    /// <param name="paramTypes">The names of types of the parameters. <i>Do NOT include the namespaces in the names.</i></param>
+//    /// <returns>Whether the patch was successful</returns>
+//    public static bool When(Func<bool> predicate, string namezpaze, string clazz, string method, string[]? paramTypes = null)
+//    {
+//        MethodInfo? minf = Utilities.GetMethodFromString(namezpaze, clazz, method, paramTypes);
 
-    /// <summary>
-    /// A combination of <see cref="Utilities.GetMethodFromString(string, string, string, string[])"/> and <see cref="When(Func{bool}, MethodInfo)"/>.
-    /// </summary>
-    /// <param name="predicate">The method or lambda to determine whether the method will be disabled.</param>
-    /// <param name="namezpaze">The Type's namespace. This will be used to look through assemblies with this namespace defined.</param>
-    /// <param name="clazz">The Type's name.</param>
-    /// <param name="method">The method's name.</param>
-    /// <param name="paramTypes">The names of types of the parameters. <i>Do NOT include the namespaces in the names.</i></param>
-    /// <returns>Whether the patch was successful</returns>
-    public static bool When(Func<bool> predicate, string namezpaze, string clazz, string method, string[] paramTypes = null)
-    {
-        MethodInfo minf = Utilities.GetMethodFromString(namezpaze, clazz, method, paramTypes);
+//        if (minf != null)
+//        {
+//            When(predicate, minf);
+//            return true;
+//        }
+//        else
+//        {
+//#if DEBUG  
+//            Log($"Unable to find {namezpaze}.{clazz}::{method} in loaded assemblies. This is likely fine and intended.");
+//#endif
+//            return false;
+//        }
+//    }
 
-        if (minf != null)
-        {
-            When(predicate, minf);
-            return true;
-        }
-        else
-        {
-#if DEBUG  
-            Log($"Unable to find {namezpaze}.{clazz}::{method} in loaded assemblies. This is likely fine and intended.");
-#endif
-            return false;
-        }
-    }
-
-    /// <summary>
-    /// 
-    /// </summary>
-    /// <param name="predicate">The method or lambda to determine whether the method will be disabled.</param>
-    /// <param name="type">The type with a potentially overridden method named <paramref name="methodName"/>.</param>
-    /// <param name="methodName">The name of the method. Can be overridden.</param>
-    /// <param name="paramTypes">In case you want more specificity, you can specify an array of types correspoding to the parameter types.</param>
-    public static void When(Func<bool> predicate, Type type, string methodName, Type[] paramTypes = null) => When(predicate, type.GetMethodEasy(methodName, paramTypes));
+//    /// <summary>
+//    /// 
+//    /// </summary>
+//    /// <param name="predicate">The method or lambda to determine whether the method will be disabled.</param>
+//    /// <param name="type">The type with a potentially overridden method named <paramref name="methodName"/>.</param>
+//    /// <param name="methodName">The name of the method. Can be overridden.</param>
+//    /// <param name="paramTypes">In case you want more specificity, you can specify an array of types correspoding to the parameter types.</param>
+//    public static void When(Func<bool> predicate, Type type, string methodName, Type[] paramTypes = null) => When(predicate, type.GetMethodEasy(methodName, paramTypes));
 
     #region Logging
     /// <summary>
@@ -208,5 +230,8 @@ public static class Disable
     {
         if (!DynTools.disableLogging) JeviLib.Log("DISABLE -> " + str, ConsoleColor.DarkGray);
     }
+    internal static void LogExtern(string str) => Log("DynMethod -> " + str);
     #endregion
 }
+
+#endif
