@@ -2,6 +2,7 @@
 using MelonLoader;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -9,6 +10,7 @@ using System.Reflection.Emit;
 using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
+using static Il2CppSLZ.Bonelab.LinkData;
 
 namespace Jevil.Patching;
 
@@ -24,7 +26,6 @@ public static class Hook
     // should be clear to use because internals SHOULD be visible to the dynamically created assembly called "JeviLib Dynamic Patch Assembly Host"
     internal static List<Delegate> hookDelegates = new();
     internal static Delegate GetDelegate(int idx) => hookDelegates[idx]; // didnt feel like learning how to have an expression get 
-    private static readonly MethodInfo GetDelegate_Info = typeof(Hook).GetMethod(nameof(GetDelegate), BindingFlags.Static | BindingFlags.NonPublic);
 
     /// <summary>
     /// Get all methods dynamically created from <see cref="OntoMethod{TDelegate}(MethodBase, TDelegate)"/> and <see cref="OntoDelegate{TDelegateSource, TDelegateDest}(TDelegateSource, TDelegateDest)"/>.
@@ -69,7 +70,7 @@ public static class Hook
         {
 #if DEBUG
             if (componentType.IsSubclassOf(typeof(Component)))
-                throw new ArgumentException("Cannot hook onto initialization of Unity native type (such as Rigidbody or Transform), only MonoBehaviours. Given type was " + componentType.FullName, nameof(componentType));
+                throw new ArgumentException("(Debug specific message) Cannot hook onto initialization of Unity native type (such as Rigidbody or Transform), only MonoBehaviours. Given type was " + componentType.FullName, nameof(componentType));
             else
 #endif
                 throw new ArgumentException($"Given type {componentType.FullName} is not a MonoBehaviour component.", nameof(componentType));
@@ -83,7 +84,7 @@ public static class Hook
             throw new ArgumentException("Component initialization callback parameter must match component type, as this will pass the component instance to the callback.", nameof(toBeRan));
 #endif
 
-        MethodInfo initMethod;
+        MethodInfo? initMethod;
         if (hookOnEnable)
             initMethod = componentType.GetMethod("OnEnable");
         else
@@ -107,6 +108,17 @@ public static class Hook
         OntoMethod(initMethod, toBeRan);
     }
 
+
+    /// <param name="declaringType">The type that declares the method to be hooked onto.</param>
+    /// <param name="methodName">The name of the method to be hooked onto. Can be static, instanced, public, or private!</param>
+    /// <param name="toBeRan">The delegate to be ran after <paramref name="methodName"/> executes.</param>
+    /// <inheritdoc cref="OntoMethod{TDelegate}(MethodBase, TDelegate)"/>
+    public static void OntoMethod<TDelegate>(Type declaringType, string methodName, TDelegate toBeRan) where TDelegate : Delegate
+    {
+        OntoMethod(declaringType.GetMethod(methodName, Const.AllBindingFlags) ?? throw new MissingMethodException($"Method {methodName} was not found on {declaringType.FullName}"), toBeRan);
+    }
+    
+
     /// <summary>
     /// Generates a type and method at runtime to host your patch and execute your Action. The same rules apply as <see cref="Redirect.FromMethod{TDelegate}(MethodInfo, TDelegate, bool)"/> except for skipping and result changing.
     /// </summary>
@@ -116,8 +128,12 @@ public static class Hook
     /// <exception cref="ArgumentNullException">The method or delegate is null.</exception>
     public static void OntoMethod<TDelegate>(MethodBase toBeHooked, TDelegate toBeRan) where TDelegate : Delegate
     {
+        //JeviLib.Warn($"TODO: reimplement OntoMethod");
+        //JeviLib.Warn(new StackTrace());
+        //return;
         // cover my ass to make sure shit doesnt break while messing around in such a critical field
         if (toBeHooked == null) throw new ArgumentNullException(nameof(toBeHooked));
+        if (toBeHooked.DeclaringType == null) throw new ArgumentException("Method to be hooked has no declaring type", nameof(toBeHooked));
         if (toBeRan == null) throw new ArgumentNullException(nameof(toBeRan));
 #if DEBUG
         if (toBeRan.Method.ReturnType != typeof(void)) Log("You should really use an Action and not a Func when hooking something. The return value won't be used. It's wasted.");
@@ -127,50 +143,111 @@ public static class Hook
         {
             Log("Hook callback returns void, is parameterless, and is static. Able to do direct harmony patch without dynamic method creation.");
             JeviLib.instance.HarmonyInstance.Patch(toBeHooked, postfix: toBeRan.Method.ToNewHarmonyMethod());
+            return;
         }
 
         // have a redirection-specific identifier
         int thisRedirNum = redirections++;
-        int thisDelegateIdx = hookDelegates.Count;
         hookDelegates.Add(toBeRan);
+        
+        MethodBuilder bob = Hook.CreateHookMethod(toBeHooked, toBeRan, $"Hook_{thisRedirNum}");
+        Type createdType = bob.DeclaringType!;
+        Log($"Compiled patch method and created runtime type!");
+        Log($"Created: <asm={createdType.Assembly.GetName().Name}> <module={createdType.Module.Name}> {createdType.FullName}");
+
+        //#if DEBUG
+        //        Log()
+        //#endif
+
+        //MethodBase dynInfo = MethodBase.GetMethodFromHandle(bob.MethodHandle);
+        //SymbolExtensions.GetMethodInfo(dynInfo);
+
+        var createdMethodInfo = bob.GetMethodInfo();
+
+        HarmonyMethod hPostfix = new(createdMethodInfo);
+
+        //Log("Method body filled. IL dump below:");
+
+        JeviLib.instance.HarmonyInstance.Patch(toBeHooked, postfix: hPostfix);
+    }
+
+
+    internal static MethodBuilder CreateHookMethod(MethodBase toBeHooked, Delegate toBeRan, string uniqueId)
+    {
+#if DEBUG
+        if (toBeHooked.DeclaringType is null)
+            throw new NullReferenceException("Declaring type of method to be patched is null!");
+#endif
+        Type delegateType = toBeRan.GetType();
         // keep the parameterinfo's of the source method, but only the ones that are used. hopefully kept in order
         List<ParameterInfo> parameters = DynTools.RemoveUnmatchedParameters(toBeHooked, toBeRan.Method);
         // convert to parameterexpressions for Linq.Expressions
         List<ParameterExpression> paramExps = DynTools.GetMethodParameters(parameters, toBeHooked.DeclaringType, toBeHooked.IsStatic);
 
         // get it, bob the builder, har har
-        TypeBuilder tb = DynTools.GetTypeBuilder("Hook_" + thisRedirNum);
-        MethodBuilder bob = tb.DefineMethod(toBeHooked.Name + " _Hook_" + thisRedirNum,
-                                            MethodAttributes.Public | MethodAttributes.Static,
-                                            CallingConventions.Any,
+        TypeBuilder tb = DynTools.GetTypeBuilder(uniqueId);
+        FieldBuilder actionHolder = tb.DefineField("forwardTo", delegateType, FieldAttributes.Private | FieldAttributes.Static);
+        MethodBuilder bob = tb.DefineMethod($"{toBeHooked.Name}_{uniqueId}",
+                                            MethodAttributes.Public | MethodAttributes.Static, // method has to be static to be called from harmony
+                                            CallingConventions.Standard,
                                             typeof(void),
                                             paramExps.Select(pi => pi.Type).ToArray());
+        for (int i = 0; i < paramExps.Count; i++)
+        {
+            ParameterExpression paramExp = paramExps[i];
+            bob.DefineParameter(i + 1, ParameterAttributes.None, paramExp.Name);
+        }
 
-        // used by callExp, dont need to pass into Expression.Block
-        // TDelegate dele = (TDelegate)Hook.GetDelegate(<idx>);
-        Expression delegateExp = Expression.Convert(Expression.Call(GetDelegate_Info, Expression.Constant(thisDelegateIdx, typeof(int))), typeof(TDelegate));
-        // dele(param1, param2, param3, ...);
-        Expression callExp = Expression.Invoke(delegateExp, paramExps);
+        ILGenerator ilGen = bob.GetILGenerator();
+        MethodInfo invokeMethod = DynTools.GetInvokeMethod(delegateType);
 
-        // its fine to "pollute" paramExps now because Expression.Call copies the IEnumerable to a read-only variant, so the call expression won't change.
-        Log("Created expressions");
+        ilGen.Emit(OpCodes.Nop);
+        ilGen.Emit(OpCodes.Ldsfld, actionHolder);
+        DynTools.EmitLoadArgs(ilGen, paramExps.Count);
+        ilGen.Emit(OpCodes.Callvirt, invokeMethod);
+        ilGen.Emit(OpCodes.Nop);
+        ilGen.Emit(OpCodes.Ret);
 
-        BlockExpression bexp = Expression.Block(callExp);
-        LambdaExpression lexp = Expression.Lambda(bexp, paramExps);
-        lexp.CompileToMethod(bob);
+        //   // {
+        //   IL_0000: nop
+        //   // tenParameterAction(a, b, c, d, e, f, g, h, j, k);
+        //   IL_0001: ldsfld class [System.Runtime] System.Action`10<int32, int32, int32, int32, int32, int32, int32, int32, int32, int32> JeviLib.Research.ActionCalling::tenParameterAction
+        //   IL_0006: ldarg.0
+        //   IL_0007: ldarg.1
+        //   IL_0008: ldarg.2
+        //   IL_0009: ldarg.3
+        //   IL_000a: ldarg.s e
+        //   IL_000c: ldarg.s f
+        //   IL_000e: ldarg.s g
+        //   IL_0010: ldarg.s h
+        //   IL_0012: ldarg.s j
+        //   IL_0014: ldarg.s k
+        //   IL_0016: callvirt instance void class [System.Runtime] System.Action`10<int32, int32, int32, int32, int32, int32, int32, int32, int32, int32>::Invoke(!0, !1, !2, !3, !4, !5, !6, !7, !8, !9)
+        //   // }
+        //   IL_001b: nop
+        //   IL_001c: ret
 
-        Type createdType = tb.CreateType();
-        Log($"Compiled patch method and created runtime type!");
-        Log($"Created: <asm={createdType.Assembly.GetName().Name}> <module={createdType.Module.Name}> {createdType.FullName}");
 
+        Type createdType = tb.CreateType() ?? throw new NullReferenceException("Created type is null");
+        FieldInfo actionHolderBuilt = createdType.GetField(actionHolder.Name, BindingFlags.NonPublic | BindingFlags.Static) ?? throw new NullReferenceException("Delegate-holding field is null");
+        actionHolderBuilt.SetValue(null, toBeRan);
+#if false // only break glass in case of emergency: aka when patching starts crashing the game for unknown reasons
+        MethodInfo minf = bob.GetMethodInfo();
+        RuntimeMethodHandle rmh = minf.MethodHandle;
+        Log("Created type & method. Here's some info in case you get an ExecutionEngineException");
+        Log($" - FuncPtr: 0x{rmh.GetFunctionPointer()}");
+        Log($" - IL Size: {minf.GetMethodBody()?.GetILAsByteArray()?.Length ?? -1} bytes");
+        Log($" - MetaTok: {minf.MetadataToken:x8}");
+        Log($" - MaxStak: {minf.GetMethodBody()?.MaxStackSize}");
+        Log($" - CallCon: {minf.GetMethodBody()?.MaxStackSize}");
+        Log($" - ExHndls: {minf.GetMethodBody()?.ExceptionHandlingClauses.Count}");
+        Log($" - RetHndl: {minf.ReturnType.TypeHandle.Value}");
+        Log($" - ModTokn: {minf.Module.MetadataToken:x8}");
+#endif
+        //Log($" - FuncPtr: {rmh.():X}");
 
-        //MethodBase dynInfo = MethodBase.GetMethodFromHandle(bob.MethodHandle);
-        //SymbolExtensions.GetMethodInfo(dynInfo);
-        HarmonyMethod hPostfix = new(bob.GetMethodInfo());
-
-        JeviLib.instance.HarmonyInstance.Patch(toBeHooked, postfix: hPostfix);
+        return bob;
     }
-
 
     #region Logging
     /// <summary>

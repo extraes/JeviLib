@@ -1,7 +1,9 @@
 ﻿using HarmonyLib;
+using Il2CppCysharp.Threading.Tasks;
 using MelonLoader;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -20,6 +22,7 @@ namespace Jevil.Patching;
 /// </summary>
 public static class Redirect
 {
+    const string RESULT_PARAM_NAME = "__result";
     delegate ParameterExpression ParamExpMake(Type type, string name, bool isByRef);
 
     static readonly ParamExpMake ParameterExpression_Make = (ParamExpMake)typeof(ParameterExpression).GetMethod("Make", BindingFlags.Static | BindingFlags.NonPublic).CreateDelegate(typeof(ParamExpMake));
@@ -96,7 +99,8 @@ public static class Redirect
             // cover my ass to make sure shit doesnt break while messing around in such a critical field
             if (toBeRedirected == null) throw new ArgumentNullException(nameof(toBeRedirected));
             if (toBeRan == null) throw new ArgumentNullException(nameof(toBeRan));
-
+            if (toBeRedirected.DeclaringType is null) throw new NullReferenceException("Method to be patched has no declaring type!");
+            
             if (toBeRan.Method.IsStatic && toBeRan.Method.GetParameters().Length == 0 && toBeRan.Method.ReturnType == typeof(void))
             {
                 Log("Method to be ran is not a replacement, void, parameterless, and static; doing direct patch without dynamic method creation.");
@@ -107,46 +111,9 @@ public static class Redirect
             // have a redirection-specific identifier
             int thisRedirNum = redirections++;
             int thisDelegateIdx = redirectionDelegates.Count;
-            redirectionDelegates.Add(toBeRan);
-            // keep the parameterinfo's of the source method, but only the ones that are used. hopefully kept in order
-            List<ParameterInfo> parameters = DynTools.RemoveUnmatchedParameters(toBeRedirected, toBeRan.Method);
-            // convert to parameterexpressions for Linq.Expressions
-            List<ParameterExpression> paramExps = DynTools.GetMethodParameters(parameters, toBeRedirected.DeclaringType, toBeRedirected.IsStatic);
-
-            // get it, bob the builder, har har
-            TypeBuilder tb = DynTools.GetTypeBuilder("Redirect_" + thisRedirNum);
-            MethodBuilder bob = tb.DefineMethod(toBeRedirected.Name + " _Redirect_" + thisRedirNum,
-                                                MethodAttributes.Public | MethodAttributes.Static,
-                                                CallingConventions.Any,
-                                                typeof(bool),
-                                                paramExps.Select(pi => pi.Type).ToArray());
-
-            // used by callExp, dont need to pass into Expression.Block
-            // TDelegate dele = (TDelegate)Hook.GetDelegate(<idx>);
-            Expression delegateExp = Expression.Convert(Expression.Call(GetDelegate_Info, Expression.Constant(thisDelegateIdx, typeof(int))), typeof(TDelegate));
-            // dele(param1, param2, param3, ...);
-            Expression callExp = Expression.Invoke(delegateExp, paramExps);
-            LabelTarget retLabel = Expression.Label(typeof(bool), "RetLabel");
-            // return <!skipOriginal>;
-            Expression retExp = Expression.Return(retLabel, Expression.Constant(!skipOriginal));
-            Expression retLabelExp = Expression.Label(retLabel, Expression.Constant(!skipOriginal));
-
-            // its fine to "pollute" paramExps now because Expression.Call copies the IEnumerable to a read-only variant, so the call expression won't change.
-            if (toBeRan.Method.ReturnType != typeof(void) && toBeRan.Method.ReturnType == toBeRedirected.ReturnType)
-            {
-                // __result = dele(param1, param2, param3, ...);
-                ParameterExpression resultParamExp = ParameterExpression_Make(toBeRedirected.ReturnType, "__result", true);
-                paramExps.Add(resultParamExp);
-                callExp = Expression.Assign(resultParamExp, callExp);
-                Log("Redirect's return type matches original return type, added __result ref param");
-            }
-            Log("Created expressions");
-
-            BlockExpression bexp = Expression.Block(callExp, retExp, retLabelExp);
-            LambdaExpression lexp = Expression.Lambda(bexp, paramExps);
-            lexp.CompileToMethod(bob);
-
-            Type createdType = tb.CreateType();
+            MethodBuilder bob = CreateRedirectMethod(toBeRedirected, toBeRan, "Redirect_" + thisRedirNum, !skipOriginal);
+            
+            Type createdType = bob.DeclaringType ?? throw new NullReferenceException("Declaring type was null after creation!");
             Log($"Compiled patch method and created runtime type!");
             Log($"Created: <asm={createdType.Assembly.GetName().Name}> <module={createdType.Module.Name}> {createdType.FullName}");
 
@@ -168,6 +135,110 @@ public static class Redirect
         }
     }
 
+
+    internal static MethodBuilder CreateRedirectMethod(MethodInfo toBeRedirected, Delegate toBeRan, string uniqueId, bool retval)
+    {
+#if DEBUG
+        if (toBeRedirected.DeclaringType is null)
+            throw new NullReferenceException("Declaring type of method to be patched is null!");
+#endif
+        bool addRefResult = toBeRan.Method.ReturnType != typeof(void) && toBeRan.Method.ReturnType == toBeRedirected.ReturnType;
+        
+        Type delegateType = toBeRan.GetType();
+        // keep the parameterinfo's of the source method, but only the ones that are used. hopefully kept in order
+        List<ParameterInfo> parameters = DynTools.RemoveUnmatchedParameters(toBeRedirected, toBeRan.Method);
+        // convert to parameterexpressions for Linq.Expressions
+        List<ParameterExpression> paramExps = DynTools.GetMethodParameters(parameters, toBeRedirected.DeclaringType, toBeRedirected.IsStatic);
+
+        if (addRefResult)
+        {
+            if (retval)
+            {
+                Log($"Original method '{toBeRedirected.Name}' isn't going to be skipped but '{toBeRan.Method.Name}' returns a value as if skipping the original... Did you use the wrong value for skipOriginal?");
+            }
+
+            // a "ref bool" parameter isnt a "bool" parameter, its a "bool&", so we need to get the reference type of the return type
+            Type referenceType = DynTools.GetReferenceType(toBeRedirected.ReturnType);
+            ParameterExpression resultParamExp = ParameterExpression_Make(toBeRedirected.ReturnType, RESULT_PARAM_NAME, true);
+            //ParameterExpression resultParamExp = Expression.Parameter(referenceType, RESULT_PARAM_NAME);
+            paramExps.Add(resultParamExp);
+        }
+        
+        // get it, bob the builder, har har
+        TypeBuilder tb = DynTools.GetTypeBuilder(uniqueId);
+        FieldBuilder actionHolder = tb.DefineField("forwardTo", delegateType, FieldAttributes.Private | FieldAttributes.Static);
+        MethodBuilder bob = tb.DefineMethod($"{toBeRedirected.Name}_{uniqueId}",
+                                            MethodAttributes.Public | MethodAttributes.Static, // method has to be static to be called from harmony
+                                            CallingConventions.Standard,
+                                            typeof(bool),
+                                            paramExps.Select(pi => pi.IsByRef && !pi.Type.IsByRef ? DynTools.GetReferenceType(pi.Type) : pi.Type).ToArray());
+        for (int i = 0; i < paramExps.Count; i++)
+        {
+            ParameterExpression paramExp = paramExps[i];
+            bob.DefineParameter(i + 1, ParameterAttributes.None, paramExp.Name);
+        }
+
+        ILGenerator ilGen = bob.GetILGenerator();
+        Label jumpIfNeeded = addRefResult ? ilGen.DefineLabel() : default;
+        MethodInfo invokeMethod = DynTools.GetInvokeMethod(delegateType);
+        ilGen.DeclareLocal(typeof(bool));
+
+
+        ilGen.Emit(OpCodes.Nop);
+        if (addRefResult)
+        {
+            // loads __result so it can be stind.*'d to set its value
+            DynTools.EmitLoadArgs(ilGen, paramExps.Count, paramExps.Count - 1); // just loads last arg (the __result)
+        }
+        ilGen.Emit(OpCodes.Ldsfld, actionHolder);
+        DynTools.EmitLoadArgs(ilGen, addRefResult ? paramExps.Count - 1 : paramExps.Count);
+        ilGen.Emit(OpCodes.Callvirt, invokeMethod);
+        if (addRefResult)
+        {
+            DynTools.EmitStoreInstruction(ilGen, toBeRedirected.ReturnType);
+            ilGen.Emit(retval ? OpCodes.Ldc_I4_1 : OpCodes.Ldc_I4_0);
+            ilGen.Emit(OpCodes.Stloc_0);
+            ilGen.Emit(OpCodes.Br_S, jumpIfNeeded);
+            ilGen.MarkLabel(jumpIfNeeded);
+            ilGen.Emit(OpCodes.Ldloc_0);
+        }
+        else
+        {
+            ilGen.Emit(retval ? OpCodes.Ldc_I4_1 : OpCodes.Ldc_I4_0);
+        }
+        ilGen.Emit(OpCodes.Ret);
+        //   // {
+        //   IL_0000: nop
+        //   // tenParameterAction(a, b, c, d, e, f, g, h, j, k);
+        //   IL_0001: ldsfld class [System.Runtime] System.Action`10<int32, int32, int32, int32, int32, int32, int32, int32, int32, int32> JeviLib.Research.ActionCalling::tenParameterAction
+        //   IL_0006: ldarg.0
+        //   IL_0007: ldarg.1
+        //   IL_0008: ldarg.2
+        //   IL_0009: ldarg.3
+        //   IL_000a: ldarg.s e
+        //   IL_000c: ldarg.s f
+        //   IL_000e: ldarg.s g
+        //   IL_0010: ldarg.s h
+        //   IL_0012: ldarg.s j
+        //   IL_0014: ldarg.s k
+        //   IL_0016: callvirt instance void class [System.Runtime] System.Action`10<int32, int32, int32, int32, int32, int32, int32, int32, int32, int32>::Invoke(!0, !1, !2, !3, !4, !5, !6, !7, !8, !9)
+        //   // }
+        //   IL_001b: nop
+        //   IL_001c: ret
+        Type createdType = tb.CreateType() ?? throw new NullReferenceException("Created type is null");
+        FieldInfo actionHolderBuilt = createdType.GetField(actionHolder.Name, BindingFlags.NonPublic | BindingFlags.Static) ?? throw new NullReferenceException("Delegate-holding field is null");
+        actionHolderBuilt.SetValue(null, toBeRan);
+
+        if (Debugger.IsAttached)
+        {
+            MethodInfo meth = createdType.GetMethod(bob.Name) ?? throw new NullReferenceException("Method null after type create");
+            var insts = PatchProcessor.GetOriginalInstructions(meth);
+
+        }
+
+        return bob;
+    }
+
     #region Logging
     /// <summary>
     /// Whether to allow the (frankly copious amounts of) log statements in <see cref="FromMethod{TDelegate}(MethodInfo, TDelegate, bool)"/> to output to the log file.
@@ -180,54 +251,4 @@ public static class Redirect
         if (!DynTools.disableLogging) JeviLib.Log("REDIRECTOR -> " + str, ConsoleColor.DarkGray);
     }
     #endregion
-
-#if DEBUG
-    internal class Tester
-    {
-        private static Tester _testAgainst;
-        internal static void TestRedirect()
-        {
-            _testAgainst = new();
-            //MethodInfo noRet = typeof(Tester).GetMethod(nameof(NoReturn), Const.AllBindingFlags);
-            FromDelegate(_testAgainst.NoReturn, RedirectNoReturn);
-
-            _testAgainst.NoReturn("astrazenica", true);
-
-            string pre = _testAgainst.ReturnString("soxon", new(0, 1, 2));
-            FromDelegate(_testAgainst.ReturnString, RedirectReturnString);
-            string post = _testAgainst.ReturnString("soxon", new(0, 1, 2));
-            JeviLib.Log($"pre == post (want false)? {pre == post}; PRE: {pre}, POST: {post}");
-
-            JeviLib.Log($"hooking noreturn");
-            Hook.OntoDelegate(_testAgainst.NoReturn, HookNoReturn);
-        }
-
-        internal static void HookNoReturn(bool shitass, Tester farquaad, string balls)
-        {
-            JeviLib.Log($"Hooked {nameof(NoReturn)}, {nameof(shitass)}={shitass}, {nameof(farquaad)}={farquaad}, {nameof(balls)}={balls}");
-        }
-
-        internal static void RedirectNoReturn(bool fuckstick, string borzoi, Tester testyMcTesterson)
-        {
-            JeviLib.Log($"Successfully redirected {nameof(NoReturn)}; {nameof(fuckstick)}={fuckstick}, {nameof(borzoi)}={borzoi}, {nameof(testyMcTesterson)}={testyMcTesterson}, testester==testagainst? {testyMcTesterson == _testAgainst}");
-        }
-
-        internal static string RedirectReturnString(string bababooey, UnityEngine.Vector3 oneHundredVecs)
-        {
-            return oneHundredVecs.ToString() + " " + bababooey;
-        }
-
-        [MethodImpl(MethodImplOptions.NoInlining)] // no inlining cause its a managed method and would be inlined by the runtime
-        internal void NoReturn(string strazinga, bool toggalog)
-        {
-
-        }
-
-        [MethodImpl(MethodImplOptions.NoInlining)] // no inlining cause its a managed method and would be inlined by the runtime
-        internal string ReturnString(string kazoingus, UnityEngine.Vector3 birkenstocks)
-        {
-            return kazoingus + " " + birkenstocks.ToString();
-        }
-    }
-#endif
 }
