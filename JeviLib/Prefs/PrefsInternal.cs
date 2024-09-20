@@ -102,8 +102,8 @@ internal static class PrefsInternal
 
     private static MelonPreferences_Entry<T> SetEntry<T>(MelonPreferences_Category mpCategory, FieldInfo field, out T toSet, string desc = "")
     {
-        T defaultValue = (T)field.GetValue(null);
-        desc = string.Join(", ", "Default: " + defaultValue.ToString(), desc);
+        T defaultValue = (T)field.GetValue(null)!;
+        desc = string.IsNullOrEmpty(desc) ? "Default: " + defaultValue.ToString() : string.Join(", ", "Default: " + defaultValue.ToString(), desc);
         var entry = mpCategory.HasEntry(field.Name) ? mpCategory.GetEntry<T>(field.Name) : mpCategory.CreateEntry<T>(field.Name, defaultValue, description: desc);
         T entryValue = entry.Value;
         toSet = defaultValue.Equals(entryValue) ? entryValue : entryValue; // if the two are different
