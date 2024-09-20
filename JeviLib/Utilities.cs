@@ -976,29 +976,4 @@ public static class Utilities
         nulled.hasValue = false;
         return nulled;
     }
-
-    //public unsafe ModuleHandle GetModuleHandleFromPtr(IntPtr ptr)
-    //{
-    //    //ModuleHandle mod = new ModuleHandle();
-    //    //mod.MDStreamVersion
-    //}
-
-    public static Type GetTypeFromPtr(IntPtr ptr)
-    {
-        return Type.GetTypeFromHandle(GetRuntimeTypeHandleFromPtr(ptr));
-    }
-
-    public static unsafe RuntimeTypeHandle GetRuntimeTypeHandleFromPtr(IntPtr ptr)
-    {
-        var rth = new RuntimeTypeHandle();
-        *(IntPtr*)(&rth) = ptr;
-        return rth;
-    }
-
-    public static unsafe ModuleHandle GetModuleHandleFromPtr(IntPtr ptr)
-    {
-        var rth = new ModuleHandle();
-        *(IntPtr*)(&rth) = ptr;
-        return rth;
-    }
 }
