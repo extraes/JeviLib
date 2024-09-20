@@ -27,7 +27,7 @@ internal static partial class Ungovernable
             ProcessAssembly(asm);
     }
 
-    private static void AssemblyLoad(object sender, AssemblyLoadEventArgs args)
+    private static void AssemblyLoad(object? sender, AssemblyLoadEventArgs args)
     {
         Assembly asm = args.LoadedAssembly;
         ProcessAssembly(asm);
@@ -35,7 +35,7 @@ internal static partial class Ungovernable
 
     private static void ProcessAssembly(Assembly asm)
     {
-        UngovernableAttribute ungov = asm.GetCustomAttribute<UngovernableAttribute>();
+        UngovernableAttribute? ungov = asm.GetCustomAttribute<UngovernableAttribute>();
 
         if (ungov is null) return;
 

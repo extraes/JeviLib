@@ -45,8 +45,8 @@ internal static class ObjectDumper
 
         // work out how a simple dump of the value should be done
         bool isString = value is string;
-        string typeName = value.GetType().FullName;
-        string formattedValue = value.ToString();
+        string typeName = value.GetType().FullName ?? "UnkType";
+        string formattedValue = value.ToString() ?? "<null>";
 
         var exception = value as Exception;
         if (exception != null)
