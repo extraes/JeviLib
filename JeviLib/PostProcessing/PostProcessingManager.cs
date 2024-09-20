@@ -229,6 +229,18 @@ public static class PostProcessingManager
         return globalTextures.Remove(descriptor);
     }
 
+    /// <summary>
+    /// Returns whether a shader takes in the the depth texture (<c>_DepthTex</c>) as an input.
+    /// <br/>This is useful for determining whether a postprocessing shader will appear properly on Quest.
+    /// </summary>
+    /// <param name="shader">Any shader. Doesn't <i>have</i> to be a postprocessing shader, but this is most useful for them.</param>
+    /// <returns>Whether or not there's a texture property named "_DepthTex"</returns>
+    public static bool UsesDepthTexture(Shader shader)
+    {
+        int depthTexIdx = shader.FindPropertyIndex("_DepthTex");
+        return depthTexIdx != -1 && shader.GetPropertyType(depthTexIdx) == ShaderPropertyType.Texture;
+    }
+
     private static void RemoveCollectedMaterials()
     {
         for (int i = postProcessFx.Count - 1; i >= 0; i--)
