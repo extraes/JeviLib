@@ -43,13 +43,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="Resources\ForkProcess.exe" />
     <None Remove="Resources\PostProcessing.bundle" />
     <None Remove="Resources\PostProcessingQuest.bundle" />
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="Resources\ForkProcess.exe" />
     <EmbeddedResource Include="Resources\PostProcessing.bundle" />
     <EmbeddedResource Include="Resources\PostProcessingQuest.bundle" />
   </ItemGroup>
