@@ -356,25 +356,27 @@ public static class DebugDraw
 
         for (int i = 0; i < paginateTokens.Length / 3; i++)
         {
-            int _i = i;
+            int _i = i; // create inside-loop copy of i specific to this iteration, for lambda capturing
+            paginateTokens[i * 3] = new GUIToken("Paginate", void () => paginates[_i] = !paginates[_i]);
+            paginateTokens[i * 3 + 1] = new GUIToken("Pg++", void () => pagination[_i]++);
+            paginateTokens[i * 3 + 2] = new GUIToken("Pg--", void () => pagination[_i]--);
+        }
+    
+        foreach (Type type in typeof(SharedPostProcessingMaterials).GetNestedTypes())
+        {
+            MethodInfo? enableMethod = type.GetMethod("Enable", Const.AllBindingFlags);
+            MethodInfo? disableMethod = type.GetMethod("Disable", Const.AllBindingFlags);
 
-
-            foreach (Type type in typeof(SharedPostProcessingMaterials).GetNestedTypes())
+            if (enableMethod == null || disableMethod == null)
             {
-                MethodInfo? enableMethod = type.GetMethod("Enable", Const.AllBindingFlags);
-                MethodInfo? disableMethod = type.GetMethod("Disable", Const.AllBindingFlags);
-
-                if (enableMethod == null || disableMethod == null)
-                {
-                    JeviLib.Warn($"PostProcessingMaterials JGUI mapping failure: {type.FullName} missing dis/enable method!");
-                    continue;
-                }
-
-                Action enable = (Action)enableMethod.CreateDelegate(typeof(Action));
-                Action disable = (Action)disableMethod.CreateDelegate(typeof(Action));
-                standardJevilTokens.Add(Button("Enable FX: " + type.Name, GUIPosition.TOP_RIGHT, enable));
-                standardJevilTokens.Add(Button("Disable FX: " + type.Name, GUIPosition.TOP_RIGHT, disable));
+                JeviLib.Warn($"PostProcessingMaterials JGUI mapping failure: {type.FullName} missing dis/enable method!");
+                continue;
             }
+
+            Action enable = (Action)enableMethod.CreateDelegate(typeof(Action));
+            Action disable = (Action)disableMethod.CreateDelegate(typeof(Action));
+            standardJevilTokens.Add(Button("Enable FX: " + type.Name, GUIPosition.TOP_RIGHT, enable));
+            standardJevilTokens.Add(Button("Disable FX: " + type.Name, GUIPosition.TOP_RIGHT, disable));
         }
     }
 
