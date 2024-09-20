@@ -60,8 +60,8 @@ public class JeviLib : MelonMod
     static Task<string>? nsCacheTask;
 
     /// <summary>
-    /// Gets a value indicating whether the asynchronously built map of namespaces to assemblies is done being created.
-    /// <para><see cref="Utilities.GetTypeFromString(string, string)"/> will fail if this is <see langword="false"/>, but <see cref="Patching.Disable.TryFromName(string, string, string, string[])"/>, which relies on GetTypeFromString, will queue an action to run when the map is finished being built.</para>
+    /// Gets a value indicating whether the asynchronously-built map of namespaces to assemblies is done being created. JeviLib waits for this to finish in its OnInitializeMelon method.
+    /// <para><see cref="Utilities.GetTypeFromString(string, string)"/> will fail if this is <see langword="false"/>.</para>
     /// </summary>
     public static bool DoneMappingNamespacesToAssemblies { get; private set; }
 
@@ -172,16 +172,6 @@ public class JeviLib : MelonMod
         else
         {
             Log("Namespace cache task is null... What?");
-        }
-
-        try
-        {
-            AssemblyPatcher.Init();
-        }
-        catch (Exception ex)
-        {
-            Error("Fixes for UniTasks, Coroutines, or IL2CPP ToString methods may be unavailable. See below for more information.");
-            Error("Exception while initializing fixes: " + ex);
         }
 
 #if SELFCONTAINED

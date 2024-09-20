@@ -44,7 +44,6 @@ public static class Utilities
     static IntPtr il2cppDomain = IL2CPP.il2cpp_domain_get(); // should just be thread agnostic
     static bool fusionLoaded = AppDomain.CurrentDomain.GetAssemblies().Any(asm => !asm.IsDynamic && asm.GetName().Name == "LabFusion");
     static bool? uniTasksNeedPatch;
-    static bool? coroutinesNeedPatch;
 
     /// <summary>
     /// Tells whether the currently running game is installed from the Oculus store using a basic file check.
@@ -58,7 +57,7 @@ public static class Utilities
     /// <summary>
     /// Uses <see cref="UnityEngine.Random.Range(int, int)"/> to determine what to return.
     /// </summary>
-    /// <returns><see cref="Player.leftHand"/> or <see cref="Player.rightHand"/></returns>
+    /// <returns><see cref="Player.LeftHand"/> or <see cref="Player.RightHand"/></returns>
     public static Hand GetRandomPlayerHand()
     {
         int randomNum = UnityEngine.Random.Range(0, 2);
@@ -498,7 +497,7 @@ public static class Utilities
     /// <returns>A background thread.</returns>
     public static Thread StartBGThread<T>(Action<T> call, T param)
     {
-        Thread thread = new((object obj) => { call((T)obj); });
+        Thread thread = new((object? obj) => { call((T)obj!); });
         thread.IsBackground = true;
         thread.Start(param);
         return thread;
@@ -512,10 +511,15 @@ public static class Utilities
     {
 #if DEBUG
         inspectorManager ??= GetTypeFromString("UnityExplorer", "InspectorManager");
-        Type? cobj = GetTypeFromString("UnityExplorer.CacheObject", "CacheObjectBase");
+        if (inspectorManager is null)
+        {
+            JeviLib.Warn($"UnityExplorer is not installed, cannot inspect object {obj}.");
+            return;
+        }
+        Type cobj = GetTypeFromString("UnityExplorer.CacheObject", "CacheObjectBase")!;
         // public static void Inspect(object obj, CacheObjectBase sourceCache = null)
         MethodInfo? minf = inspectorManager?.GetMethod("Inspect", new Type[] { typeof(object), cobj });
-        minf?.Invoke(null, new object[] { obj, null });
+        minf?.Invoke(null, new object?[] { obj, null });
 #endif
     }
 
@@ -594,41 +598,10 @@ public static class Utilities
         => MelonUtils.CurrentPlatform == (MelonPlatformAttribute.CompatiblePlatforms)3;
 
     /// <summary>
-    /// Returns whether yielding WaitForSeconds/WaitForSecondsRealtime/another coroutine will work as expected, or if it will only yield for one frame.
-    /// <br>JeviLib v2.0.0 restores expected functionality by replacing the IL2CPP support module (in this context "patching" it) on PCVR for better performance, but using Harmony to intercept coroutines and wrap them on Quest.</br>
+    /// Returns whether a <see cref="UniTask"/> can be <see langword="await"/>ed by mod code.
+    /// <br>JeviLib v3.0.0 restores <see langword="await"/> functionality on UniTasks by modifying assembly generation (and forcing it to be rerun) to make them implement INotifyCompletion.</br>
     /// </summary>
-    /// <returns><see langword="true"/> if yielding always waits only one frame. <see langword="false"/> if yielding works as expected (e.g. if the support module has been replaced).</returns>
-    public static bool CoroutinesNeedPatch()
-    {
-#if NET5_0_OR_GREATER
-        return false;
-#endif
-
-        // returns 
-        if (coroutinesNeedPatch.HasValue) return coroutinesNeedPatch.Value;
-        if (IsPlatformQuest())
-        {
-            coroutinesNeedPatch = false;
-            return coroutinesNeedPatch.Value;
-        }
-
-        Assembly supportModule = AppDomain.CurrentDomain.GetAssemblies().First(asm => !asm.IsDynamic && asm.Location.ToLower().Contains("support") && asm.Location.EndsWith(@"Il2Cpp.dll"));
-        Type monoEnumeratorWrapper = supportModule.GetType("MelonLoader.Support.MonoEnumeratorWrapper");
-        FieldInfo enumeratorWaitTimeField = monoEnumeratorWrapper.GetField("waitTime", Const.AllBindingFlags);
-        coroutinesNeedPatch = enumeratorWaitTimeField == null;
-#if DEBUG
-        JeviLib.Log($"Defined fields in {monoEnumeratorWrapper.FullName}");
-        foreach (FieldInfo field in monoEnumeratorWrapper.GetFields(Const.AllBindingFlags))
-            JeviLib.Log($"{field.FieldType.Name} {field.Name}");
-#endif
-        return coroutinesNeedPatch.Value;
-    }
-
-    /// <summary>
-    /// Returns whether a <see cref="Il2CppCysharp.Threading.Tasks.UniTask"/> can be <see langword="await"/>ed by mod code.
-    /// <br>JeviLib v1.2.0 restores <see langword="await"/> functionality on UniTasks by modifying ("patching") <see cref="Il2CppCysharp.Threading.Tasks.UniTask.Awaiter"/> and <see cref="Il2CppCysharp.Threading.Tasks.UniTask{T}.Awaiter"/> to make them implement INotifyCompletion.</br>
-    /// </summary>
-    /// <returns><see langword="true"/> if UniTasks are unable to be <see langword="await"/>ed by mod code. <see langword="false"/> if UniTask.dll has already been patched.</returns>
+    /// <returns><see langword="true"/> if UniTasks are unable to be <see langword="await"/>ed by mod code. <see langword="false"/> if <see cref="System.Runtime.CompilerServices.INotifyCompletion"/> has already been implemented.</returns>
     public static bool UniTasksNeedPatch()
     {
         if (uniTasksNeedPatch.HasValue) return uniTasksNeedPatch.Value;
@@ -665,53 +638,42 @@ public static class Utilities
         Application.Quit();
     }
 
-    /// <summary>
-    /// Restarts (or quits if on Android) the game if JevilFixer patches are unapplied (if coroutines still need fixing or UniTasks still need fixing)
-    /// </summary>
-    public static void RestartIfPatchesUnapplied()
-    {
-        if (UniTasksNeedPatch() || CoroutinesNeedPatch())
-        {
-            JeviLib.Log("This game needs patches applied - restarting!");
-            RestartGame();
-        }
-    }
+    //todo: implement android package checking
+    ///// <summary>
+    ///// Returns whether the package with the given ID <paramref name="bundleId"/> is installed on the given system. This is currently borked.
+    ///// </summary>
+    ///// <param name="bundleId">The package app ID. Usually looks something like "com.StressLevelZero.BONELAB"</param>
+    ///// <returns><see langword="true"/> if the package's "launch intents" were found (IDK, ask that guy from the Unity forums), <see langword="false"/> if it wasn't or if the current platform is not android.</returns>
+    //public static bool IsAndroidPackageInstalled(string bundleId)
+    //{
+    //    if (!IsPlatformQuest()) return false;
+    //    return isPackageInstalled(bundleId);
 
-    /// <summary>
-    /// Returns whether the package with the given ID <paramref name="bundleId"/> is installed on the given system. This is currently borked.
-    /// </summary>
-    /// <param name="bundleId">The package app ID. Usually looks something like "com.StressLevelZero.BONELAB"</param>
-    /// <returns><see langword="true"/> if the package's "launch intents" were found (IDK, ask that guy from the Unity forums), <see langword="false"/> if it wasn't or if the current platform is not android.</returns>
-    public static bool IsAndroidPackageInstalled(string bundleId)
-    {
-        if (!IsPlatformQuest()) return false;
-        return isPackageInstalled(bundleId);
+    //    throw new NotImplementedException();
 
-        throw new NotImplementedException();
+    //    AndroidJavaClass up = new AndroidJavaClass("com.unity3d.player.UnityPlayer");
+    //    AndroidJavaObject ca = up.GetStatic<AndroidJavaObject>("currentActivity");
+    //    //AndroidJavaObject packageManager = ca.Call<AndroidJavaObject, AndroidJavaObject>("getPackageManager");
+    //    AndroidJavaObject launchIntent = null;
+    //    //if the app is installed, no errors. Else, doesn't get past next line
+    //    try
+    //    {
+    //        Il2CppReferenceArray<Il2CppSystem.Object> parameter = new(1);
+    //        parameter[0] = bundleId;
+    //        //launchIntent = packageManager.Call<AndroidJavaObject, AndroidJavaObject``>("getLaunchIntentForPackage", parameter);
+    //        //        
+    //        //        ca.Call("startActivity",launchIntent);
+    //    }
+    //    catch (Exception ex)
+    //    {
+    //        JeviLib.Warn("Exception while checking package installation. Likely harmless: " + ex);
+    //    }
 
-        AndroidJavaClass up = new AndroidJavaClass("com.unity3d.player.UnityPlayer");
-        AndroidJavaObject ca = up.GetStatic<AndroidJavaObject>("currentActivity");
-        //AndroidJavaObject packageManager = ca.Call<AndroidJavaObject, AndroidJavaObject>("getPackageManager");
-        AndroidJavaObject launchIntent = null;
-        //if the app is installed, no errors. Else, doesn't get past next line
-        try
-        {
-            Il2CppReferenceArray<Il2CppSystem.Object> parameter = new(1);
-            parameter[0] = bundleId;
-            //launchIntent = packageManager.Call<AndroidJavaObject, AndroidJavaObject``>("getLaunchIntentForPackage", parameter);
-            //        
-            //        ca.Call("startActivity",launchIntent);
-        }
-        catch (Exception ex)
-        {
-            JeviLib.Warn("Exception while checking package installation. Likely harmless: " + ex);
-        }
+    //    if (launchIntent == null)
+    //        return false;
 
-        if (launchIntent == null)
-            return false;
-
-        return true;
-    }
+    //    return true;
+    //}
 
     /// <summary>
     /// Builds a loggable string that's similar to what's logged when calling NodeJS's (or whatever browser you have) <c>console.log</c> function.
@@ -845,14 +807,19 @@ public static class Utilities
     /// <summary>
     /// Creates a directory, but if the parent directory doesn't exist, it creates it. If the parent's parent doesn't exist, it creates it. And so on.
     /// </summary>
+    /// <returns>True or false, depending on whether </returns>
     /// <param name="directory">A folder, not a file path. See <see cref="Path.GetDirectoryName(string)"/>.</param>
-    public static void CreateDirectoryRecursive(string directory)
+    public static bool CreateDirectoryRecursive(string directory)
     {
-        string parentDir = Path.GetDirectoryName(directory);
+        string? parentDir = Path.GetDirectoryName(directory);
+        if (parentDir is null)
+            return false;
 
         if (!Directory.Exists(parentDir)) CreateDirectoryRecursive(parentDir);
         
         Directory.CreateDirectory(directory);
+
+        return true;
     }
 
     /// <summary>

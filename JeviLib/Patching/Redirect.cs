@@ -24,8 +24,7 @@ public static class Redirect
 {
     const string RESULT_PARAM_NAME = "__result";
     delegate ParameterExpression ParamExpMake(Type type, string name, bool isByRef);
-
-    static readonly ParamExpMake ParameterExpression_Make = (ParamExpMake)typeof(ParameterExpression).GetMethod("Make", BindingFlags.Static | BindingFlags.NonPublic).CreateDelegate(typeof(ParamExpMake));
+    static readonly ParamExpMake ParameterExpression_Make = (ParamExpMake)typeof(ParameterExpression).GetMethod("Make", BindingFlags.Static | BindingFlags.NonPublic)!.CreateDelegate(typeof(ParamExpMake));
     static int redirections;
     /// <summary>
     /// The length, in ms, to wait to acquire the threaded spinlock. Lock logging statements do not abide by <see cref="DisableLogging"/>.
