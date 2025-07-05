@@ -21,15 +21,16 @@ internal static class PostProcessingInternal
     static readonly List<object> neverCollect = new();
     internal static event Action<ScriptableRenderContext, RenderingData>? ExecuteRenderPass;
 
-    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-    private delegate void Patch_ScriptableRenderer_ExecuteRenderPass(
-        IntPtr _this,                       //ScriptableRenderer _this, 
-        ScriptableRenderContext context,    //ScriptableRenderContext context, 
-        IntPtr renderPass,                  //ref ScriptableRenderPass renderPass,
-        IntPtr renderingData,               //ref RenderingData renderingData,
-        IntPtr nativeMethodInfo             //ref MethodInfo nativeMethodInfo,
-        );
+    //[UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    //private delegate void Patch_ScriptableRenderer_ExecuteRenderPass(
+    //    IntPtr _this,                       //ScriptableRenderer _this, 
+    //    ScriptableRenderContext context,    //ScriptableRenderContext context, 
+    //    IntPtr renderPass,                  //ref ScriptableRenderPass renderPass,
+    //    IntPtr renderingData,               //ref RenderingData renderingData,
+    //    IntPtr nativeMethodInfo             //ref MethodInfo nativeMethodInfo,
+    //    );
 
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     private delegate void NativeSignature_ScriptableRenderer_ExecuteRenderPass(
         IntPtr _this,                       //ScriptableRenderer _this, 
         ScriptableRenderContext context,    //ScriptableRenderContext context, 
@@ -39,7 +40,7 @@ internal static class PostProcessingInternal
         );
 
     private static NativeHook<NativeSignature_ScriptableRenderer_ExecuteRenderPass> hook;
-    private static NativeSignature_ScriptableRenderer_ExecuteRenderPass _original_ExecuteRenderPass;
+    //private static NativeSignature_ScriptableRenderer_ExecuteRenderPass _original_ExecuteRenderPass;
 
     private static Material _blitMat;
     private static Material _depthMat;
@@ -69,30 +70,30 @@ internal static class PostProcessingInternal
 
     internal static unsafe void PerformNativeHook()
     {
-        Patch_ScriptableRenderer_ExecuteRenderPass patch = NativeMethodPatch_ScriptableRenderer_ExecuteRenderPass;
-        neverCollect.Add(patch); // prevent "A callback was made on a garbage collected delegate of type 'JeviLib!Jevil.PostProcessing.PostProcessingInternal+Patch_ScriptableRenderer_ExecuteRenderPass::Invoke'."
+        NativeSignature_ScriptableRenderer_ExecuteRenderPass patch = NativeMethodPatch_ScriptableRenderer_ExecuteRenderPass;
+        neverCollect.Add(patch); // prevent "A callback was made on a garbage collected delegate of type 'JeviLib!Jevil.PostProcessing.PostProcessingInternal+NativeSignature_ScriptableRenderer_ExecuteRenderPass::Invoke'."
 
-        // hardcoding, so hype. possible todo: look for the field name by iterating getfields?
-        //string nativeName = Utilities.IsPlatformQuest()
-        //                  ? throw new NotImplementedException("PostProcessing on quest needs method pointer name") /*"NativeMethodInfoPtr_ExecuteRenderPass_Private_Void_ScriptableRenderContext_ScriptableRenderPass_RenderingData_0"*/
-        //                  : "NativeMethodInfoPtr_ExecuteRenderPass_Private_Void_ScriptableRenderContext_ScriptableRenderPass_byref_RenderingData_0";
-        //var nativeMethodPtr = *(IntPtr*)(IntPtr)typeof(ScriptableRenderer).GetField(nativeName, BindingFlags.Static | BindingFlags.NonPublic).GetValue(null);
-        var nativeMethodPtr = *(IntPtr*)(IntPtr)Il2CppInteropUtils.GetIl2CppMethodInfoPointerFieldForGeneratedMethod(typeof(ScriptableRenderer).GetMethod(nameof(ScriptableRenderer.ExecuteRenderPass))).GetValue(null)!;
+        
+        var targetMethod = typeof(ScriptableRenderer).GetMethod(nameof(ScriptableRenderer.ExecuteRenderPass));
+        var nativeMethodPtr = *(IntPtr*)(IntPtr)Il2CppInteropUtils.GetIl2CppMethodInfoPointerFieldForGeneratedMethod(targetMethod).GetValue(null)!;
 
         //Patching.Hook.OntoMethod(typeof(ScriptableRenderer).GetMethod(nameof(ScriptableRenderer.ExecuteRenderPass))!, () => JeviLib.Log("uwe bole"));
 
         //var managedPatchPtr = patch.Method.MethodHandle.GetFunctionPointer();
         IntPtr managedPatchPtr = Marshal.GetFunctionPointerForDelegate(patch);
 
-        //hook = new((IntPtr)(&nativeMethodPtr), managedPatchPtr);
-        //hook.Attach();
-        //hook = new()
-#pragma warning disable CS0618 // Type or member is obsolete
-        MelonUtils.NativeHookAttach((IntPtr)(&nativeMethodPtr), managedPatchPtr);
-#pragma warning restore CS0618 // Type or member is obsolete
+        hook = new((IntPtr)(&nativeMethodPtr), managedPatchPtr);
+        hook.Attach();
+#if DEBUG
+        JeviLib.Log("PostProcessingInternal: Hooked ScriptableRenderer.ExecuteRenderPass at " + nativeMethodPtr.ToString("X16"));
+#endif
 
-        _original_ExecuteRenderPass = Marshal.GetDelegateForFunctionPointer<NativeSignature_ScriptableRenderer_ExecuteRenderPass>(nativeMethodPtr);
-        //_original_ExecuteRenderPass = Marshal.GetDelegateForFunctionPointer<NativeSignature_ScriptableRenderer_ExecuteRenderPass>();
+        //#pragma warning disable CS0618 // Type or member is obsolete
+        //        MelonUtils.NativeHookAttach((IntPtr)(&nativeMethodPtr), managedPatchPtr);
+        //#pragma warning restore CS0618 // Type or member is obsolete
+
+        //_original_ExecuteRenderPass = Marshal.GetDelegateForFunctionPointer<NativeSignature_ScriptableRenderer_ExecuteRenderPass>(nativeMethodPtr);
+        //_original_ExecuteRenderPass = hook.Trampoline;
     }
 
     private static void NativeMethodPatch_ScriptableRenderer_ExecuteRenderPass(IntPtr _this,                       //ScriptableRenderer _this, 
@@ -102,9 +103,12 @@ internal static class PostProcessingInternal
         IntPtr nativeMethodInfo             //ref MethodInfo nativeMethodInfo, (<- usually null cuz IL2CPP)
         )
     {
+#if DEBUG
+        JeviLib.Log("PostProcessingInternal: Executing hook");
+#endif
         // makes this, effectively, a postfix
-        //hook.Trampoline(_this, context, renderPass, renderingData, nativeMethodInfo);
-        _original_ExecuteRenderPass(_this, context, renderPass, renderingData, nativeMethodInfo);
+        hook.Trampoline(_this, context, renderPass, renderingData, nativeMethodInfo);
+        //_original_ExecuteRenderPass(_this, context, renderPass, renderingData, nativeMethodInfo);
 
         ScriptableRenderPass srp = new(renderPass);
         if (srp.renderPassEvent != RenderPassEvent.BeforeRenderingPostProcessing)
@@ -144,10 +148,10 @@ internal static class PostProcessingInternal
         EnsureDepthMat();
 
         MeshFilter mf = Instances<MeshFilter>.Get(rend.transform);
-        if (mf.INOC() || mf.sharedMesh.INOC())
+        if (mf == null || mf.sharedMesh == null)
         {
 #if DEBUG
-            JeviLib.Warn($"MeshRenderer's {rend.transform.GetFullPath()} meshfilter {(mf.INOC() ? "is null!" : "is meshless!")} thanks obama.");
+            JeviLib.Warn($"MeshRenderer's {rend.transform.GetFullPath()} meshfilter {(mf == null ? "is null!" : "is meshless!")} thanks obama.");
 #endif
             return;
         }
@@ -157,14 +161,14 @@ internal static class PostProcessingInternal
 
     private static void EnsureBlitMat()
     {
-        if (_blitMat.INOC())
+        if (_blitMat == null)
             _blitMat = CreateMaterialFromShader("Assets/PostProcess/BlitWithoutBlit.shader");
     }
 
     private static void EnsureDepthMat()
     {
         // shadergraph cuz im a bitch
-        if (_depthMat.INOC())
+        if (_depthMat == null)
             _depthMat = CreateMaterialFromShader("Assets/PostProcess/CustomDepth.shadergraph");
     }
 
