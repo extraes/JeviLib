@@ -119,6 +119,11 @@ public class JeviLib : MelonMod
         DebugDraw.InitTokens();
 #endif
 
+        // required by unitaskdelays
+        DisableMethodResolution.Init();
+
+        UnitaskDelays.Init();
+
         if (Utilities.IsPlatformQuest())
             AndroidAsyncUnfucker.Init();
 
@@ -137,8 +142,8 @@ public class JeviLib : MelonMod
 
         nsCacheTask = Task.Run(this.GetNamespaces);
 
-#if DEBUG && !SELFCONTAINED
-        Hooking.OnLevelLoaded += (li) => { OnSceneWasInitialized(-1, li.barcode); };
+#if !SELFCONTAINED
+        Hooking.OnLevelLoaded += (li) => { FetchReferences(-1, li.barcode); };
 #endif
 
         sw.Stop();
@@ -266,13 +271,13 @@ public class JeviLib : MelonMod
     //public override void OnSceneWasLoaded(int buildIndex, string sceneName)
     //{
     //    Log($"OSWL CALLED, PASSING TO OSWI: PARAMS: IDX={buildIndex}, NAME={sceneName}");
-    //    OnSceneWasInitialized(buildIndex, sceneName);
+    //    FetchReferences(buildIndex, sceneName);
     //}
 
     /// <summary>
     /// Update references in <see cref="Instances"/>
     /// </summary>
-    public override void OnSceneWasInitialized(int buildIndex, string sceneName)
+    public void FetchReferences(int buildIndex, string sceneName)
     {
         //return;
 #if DEBUG
@@ -423,6 +428,16 @@ public class JeviLib : MelonMod
                 }
             }
         }
+        catch (ReflectionTypeLoadException rtle)
+        {
+#if DEBUG
+            Error("Failed to load type(s) from " + currAsmTitle, rtle);
+            foreach (var item in rtle.Types)
+            {
+
+            }
+#endif
+        }
         catch (Exception ex)
         {
 #if DEBUG
@@ -430,22 +445,6 @@ public class JeviLib : MelonMod
             Error("Caught exception while populating namespace dictionary for assembly " + currAsmTitle, ex);
 #endif
         }
-    }
-
-    private static IEnumerable<MethodInfo> GetLogMethods()
-    {
-        IEnumerable<MethodInfo> logMethods = new List<MethodInfo>();
-        string[] methodnames = { nameof(MelonLogger.Msg), nameof(MelonLogger.Warning), nameof(MelonLogger.Error), };
-        Type[] types = { typeof(MelonLogger), typeof(MelonLogger.Instance) };
-
-        foreach (Type type in types)
-        {
-            foreach (string method in methodnames)
-            {
-                logMethods = logMethods.Concat(type.GetMethods(method));
-            }
-        }
-        return logMethods;
     }
 
     #region MelonLogger replacements
@@ -456,7 +455,7 @@ public class JeviLib : MelonMod
     internal static void Warn(object obj) => instance.LoggerInstance.Warning(obj?.ToString() ?? "null");
     internal static void Error(string str) => instance.LoggerInstance.Error(str);
     internal static void Error(object obj) => instance.LoggerInstance.Error(obj?.ToString() ?? "null");
-    internal static void Error(string str, Exception ex) => instance.LoggerInstance.Error(str ?? "null", ex);
+    internal static void Error(string str, Exception? ex) => instance.LoggerInstance.Error(str ?? "null", ex);
 
     #endregion
 

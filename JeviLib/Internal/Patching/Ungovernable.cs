@@ -9,6 +9,7 @@ using System.Runtime.CompilerServices;
 using HarmonyLib;
 using Il2CppInterop.Runtime;
 using System.Diagnostics;
+using MelonLoader;
 
 namespace Jevil.Internal.Patching;
 
@@ -49,6 +50,8 @@ internal static partial class Ungovernable
                 PatchAsyncStateMachines(asm);
             if (ungov.type.HasFlag(UngovernableType.PLAYER_PREFS_REDIRECT))
                 TranspilePlayerPrefs(asm);
+            if (ungov.type.HasFlag(UngovernableType.LOG_METHOD_EXECS))
+                PatchAllMethods(asm);
         }
         catch (Exception ex)
         {

@@ -606,7 +606,11 @@ public static class Extensions
 #if SELFCONTAINED
         AssetSpawner.Spawn(spawn, pos, rot, Utilities.NulledNullable<Vector3>(), null, false, Utilities.NulledNullable<int>(), null, null);
 #else
-        AssetSpawner.Spawn(spawn, pos, rot, Utilities.NulledNullable<Vector3>(), null, false, Utilities.NulledNullable<int>(), null, null);
+#if DEBUG
+        AssetSpawner.SpawnAsync(spawn, pos, rot, Utilities.NulledNullable<Vector3>(), null, false, Utilities.NulledNullable<int>(), new Action<GameObject>(go => JeviLib.Log($"Spawned {go} with JeviLib")));
+#else
+        AssetSpawner.SpawnAsync(spawn, pos, rot, Utilities.NulledNullable<Vector3>(), null, false, Utilities.NulledNullable<int>(), null, null);
+#endif
 #endif
     }
 
@@ -622,7 +626,11 @@ public static class Extensions
 #if SELFCONTAINED
         return AssetSpawner.SpawnAsync(spawn, pos, rot, Utilities.NulledNullable<Vector3>(), null, false, Utilities.NulledNullable<int>(), null, null);
 #else
+#if DEBUG
+        return AssetSpawner.SpawnAsync(spawn, pos, rot, Utilities.NulledNullable<Vector3>(), null, false, Utilities.NulledNullable<int>(), new Action<GameObject>(go => JeviLib.Log($"Spawned {go} with JeviLib")));
+#else
         return AssetSpawner.SpawnAsync(spawn, pos, rot, Utilities.NulledNullable<Vector3>(), null, false, Utilities.NulledNullable<int>(), null, null);
+#endif
 #endif
     }
 
@@ -871,5 +879,36 @@ public static class Extensions
         value.hasValue = nullable.HasValue;
 
         return value;
+    }
+
+    /// <summary>
+    /// Patches the <i>proxy method</i> of an IL2CPP type, i.e. the method that is called when <i>you</i> (or any other managed code) call a method from an IL2CPP assembly.
+    /// <para/>If your type is not an IL2CPP type, an exception will be thrown in debug builds.
+    /// <br/>In release builds, the method will be patched normally.
+    /// </summary>
+    public static void PatchProxyMethod(this HarmonyLib.Harmony harmony,
+                                        MethodInfo originalMethod,
+                                        HarmonyMethod? prefix = null,
+                                        HarmonyMethod? postfix = null,
+                                        HarmonyMethod? transpiler = null,
+                                        HarmonyMethod? finalizer = null,
+                                        HarmonyMethod? ilmanipulator = null)
+    {
+#if DEBUG
+        if (originalMethod.DeclaringType is not null)
+        {
+            if (Internal.Patching.DisableMethodResolution.IsManagedTypeInjected(originalMethod.DeclaringType))
+                throw new ArgumentException("Why are you trying to patch the proxy method of a managed injected type? Just use regular Harmony, you don't need to patch nonexistent proxy methods.");
+            else if (Il2CppType.From(originalMethod.DeclaringType, false) is null)
+            {
+                throw new ArgumentException("Why are you trying to patch the proxy method of a regular managed type? Just use regular Harmony, you don't need to patch nonexistent proxy methods.");
+            }
+
+        }
+#endif
+
+        Internal.Patching.DisableMethodResolution.disableResolutionFor.Add(originalMethod.DeclaringType!);
+        harmony.Patch(originalMethod, prefix, postfix, transpiler, finalizer, ilmanipulator);
+        Internal.Patching.DisableMethodResolution.disableResolutionFor.Remove(originalMethod.DeclaringType!);
     }
 }

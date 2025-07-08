@@ -36,7 +36,7 @@ public static class StatsAdmin
     /// <param name="categoryName">The name of the ModStats Category to retrieve.</param>
     /// <param name="pass">The password/passphrase setup when creating the category.</param>
     /// <returns>The data recieved, or null if the request fails. Debug builds will give details when the request fails.</returns>
-    public static async Task<Dictionary<string, long>> GetCategoryAsync(string categoryName, string pass)
+    public static async Task<Dictionary<string, long>?> GetCategoryAsync(string categoryName, string pass)
     {
         UnityWebRequest req;
         Utilities.AttachIl2CppToThread();
@@ -52,8 +52,7 @@ public static class StatsAdmin
             return null;
 
         // ive never had ML's TinyJSON work properly. i dont know where the fuck it came from, but if it fails here i blame ML.
-        Variant json = JSON.Load(req.downloadHandler.text);
-        JSON.MakeInto(json, out Dictionary<string, long> category);
+        Dictionary<string, long>? category = System.Text.Json.JsonSerializer.Deserialize< Dictionary<string, long>>(req.downloadHandler.text);
         return category;
     }
 

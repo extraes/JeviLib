@@ -19,4 +19,10 @@ public enum UngovernableType
     /// <para><see cref="UnityEngine.PlayerPrefs.TrySetInt(string, int)"/> (and its associated <see langword="float"/> and <see langword="string"/> counterparts) are not broken, so they won't be touched.</para>
     /// </summary>
     PLAYER_PREFS_REDIRECT = 1 << 1,
+    /// <summary>
+    /// JeviLib will prefix and postfix <b>all</b> methods in your assembly so you can see what's being called and when.
+    /// It will also log timing, so you can see how long each method takes to execute.
+    /// This is useful for debugging runtime hangs, but will slow down your game <i>substantially</i>.
+    /// </summary>
+    LOG_METHOD_EXECS = 1 << 2,
 }

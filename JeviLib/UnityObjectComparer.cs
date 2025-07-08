@@ -11,7 +11,7 @@ namespace Jevil;
 /// Comparer for Unity Objects. Special because it uses the overridden equality operator for them.
 /// </summary>
 /// <typeparam name="T"></typeparam>
-public class UnityObjectComparer<T> : IEqualityComparer<T> where T : UnityEngine.Object
+public class UnityObjectComparer<T> : IEqualityComparer<T> where T : UnityEngine.Object?
 {
     /// <summary>
     /// An instance that can be passed into <see cref="Enumerable.Distinct{TSource}(IEnumerable{TSource}, IEqualityComparer{TSource})"/> to remove duplicate elements from a <see cref="List{T}"/> or <see cref="Dictionary{TKey, TValue}"/>.
@@ -24,7 +24,7 @@ public class UnityObjectComparer<T> : IEqualityComparer<T> where T : UnityEngine
     /// <param name="x">Any object of type <typeparamref name="T"/>. May be null.</param>
     /// <param name="y">Any object of type <typeparamref name="T"/>. May be null.</param>
     /// <returns>Whether the two are equal.</returns>
-    public bool Equals(T x, T y)
+    public bool Equals(T? x, T? y)
     {
         bool xNull = x.INOC();
         bool yNull = y.INOC();
