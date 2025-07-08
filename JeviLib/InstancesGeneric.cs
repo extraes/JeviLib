@@ -18,7 +18,7 @@ public static class Instances<T> where T : Component
     /// <summary>
     /// Returns the most recently cached component. This may return null, but return a destroyed object.
     /// </summary>
-    public static T? MostRecentlyCached => mostRecent.INOC() ? null : mostRecent;
+    public static T? MostRecentlyCached => mostRecent == null ? null : mostRecent;
     static T? mostRecent;
     static bool triedAutocache = false;
     static bool isAutocaching = false;
@@ -120,9 +120,9 @@ public static class Instances<T> where T : Component
     /// <param name="go">Any gameobject, likely one in the cache</param>
     /// <param name="component">A cached component, if <see langword="true"/> is returned. Otherwise <see langword="null"/></param>
     /// <returns></returns>
-    public static bool TryGetFromCache(GameObject go, [NotNullWhen(true)] out T? component)
+    public static bool TryGetFromCache(GameObject? go, [NotNullWhen(true)] out T? component)
     {
-        if (go.INOC())
+        if (go == null)
         {
             component = null;
             return false;

@@ -43,7 +43,7 @@ public static class SharedPostProcessingMaterials
         {
             get 
             {
-                if (material.INOC())
+                if (material == null)
                     material = PostProcessingInternal.CreateMaterialFromShader(ASSET_PATH);
                 return material;
             }
@@ -86,7 +86,7 @@ public static class SharedPostProcessingMaterials
         {
             get 
             {
-                if (material.INOC())
+                if (material == null)
                     material = PostProcessingInternal.CreateMaterialFromShader(ASSET_PATH);
                 return material;
             }
@@ -122,7 +122,7 @@ public static class SharedPostProcessingMaterials
         {
             get
             {
-                if (material.INOC())
+                if (material == null)
                     material = PostProcessingInternal.CreateMaterialFromShader(ASSET_PATH);
                 return material;
             }
@@ -158,7 +158,7 @@ public static class SharedPostProcessingMaterials
         {
             get
             {
-                if (material.INOC())
+                if (material == null)
                     material = PostProcessingInternal.CreateMaterialFromShader(ASSET_PATH);
                 return material;
             }
@@ -194,7 +194,7 @@ public static class SharedPostProcessingMaterials
         {
             get 
             {
-                if (material.INOC())
+                if (material == null)
                     material = PostProcessingInternal.CreateMaterialFromShader(ASSET_PATH);
                 return material;
             }
@@ -238,7 +238,7 @@ public static class SharedPostProcessingMaterials
         {
             get 
             {
-                if (material.INOC())
+                if (material == null)
                     material = PostProcessingInternal.CreateMaterialFromShader(ASSET_PATH);
                 return material;
             }
@@ -274,7 +274,7 @@ public static class SharedPostProcessingMaterials
         {
             get
             {
-                if (material.INOC())
+                if (material == null)
                     material = PostProcessingInternal.CreateMaterialFromShader(ASSET_PATH);
                 return material;
             }
@@ -326,7 +326,7 @@ public static class SharedPostProcessingMaterials
         {
             get 
             {
-                if (material.INOC())
+                if (material == null)
                     material = PostProcessingInternal.CreateMaterialFromShader(ASSET_PATH);
                 return material;
             }
@@ -362,7 +362,7 @@ public static class SharedPostProcessingMaterials
         {
             get
             {
-                if (material.INOC())
+                if (material == null)
                     material = PostProcessingInternal.CreateMaterialFromShader(ASSET_PATH);
                 return material;
             }
@@ -406,7 +406,7 @@ public static class SharedPostProcessingMaterials
         {
             get 
             {
-                if (material.INOC())
+                if (material == null)
                     material = PostProcessingInternal.CreateMaterialFromShader(ASSET_PATH);
                 return material;
             }
@@ -446,7 +446,7 @@ public static class SharedPostProcessingMaterials
         {
             get
             {
-                if (material.INOC())
+                if (material == null)
                     material = PostProcessingInternal.CreateMaterialFromShader(ASSET_PATH);
                 return material;
             }
@@ -478,7 +478,7 @@ public static class SharedPostProcessingMaterials
         {
             get 
             {
-                if (material.INOC())
+                if (material == null)
                     material = PostProcessingInternal.CreateMaterialFromShader(ASSET_PATH);
                 return material;
             }
@@ -515,7 +515,7 @@ public static class SharedPostProcessingMaterials
         {
             get 
             {
-                if (material.INOC())
+                if (material == null)
                     material = PostProcessingInternal.CreateMaterialFromShader(ASSET_PATH);
                 return material;
             }
@@ -555,7 +555,7 @@ public static class SharedPostProcessingMaterials
         {
             get 
             {
-                if (material.INOC())
+                if (material == null)
                     material = PostProcessingInternal.CreateMaterialFromShader(ASSET_PATH);
                 return material;
             }
@@ -595,7 +595,7 @@ public static class SharedPostProcessingMaterials
         {
             get 
             {
-                if (material.INOC())
+                if (material == null)
                     material = PostProcessingInternal.CreateMaterialFromShader(ASSET_PATH);
                 return material;
             }
@@ -643,7 +643,7 @@ public static class SharedPostProcessingMaterials
         {
             get
             {
-                if (material.INOC())
+                if (material == null)
                     material = PostProcessingInternal.CreateMaterialFromShader(ASSET_PATH);
                 return material;
             }

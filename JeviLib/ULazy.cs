@@ -38,7 +38,7 @@ public sealed class ULazy<T> where T : UnityEngine.Object
     {
         get
         {
-            if (value.INOC())
+            if (value == null)
             {
                 value = valueMaker();
                 if (persist)
@@ -47,7 +47,7 @@ public sealed class ULazy<T> where T : UnityEngine.Object
                     value.hideFlags = UnityEngine.HideFlags.HideAndDontSave;
 
 #if DEBUG
-                if (value.INOC())
+                if (value == null)
                     throw new InvalidOperationException("Value maker returned null. This should not happen!");
 #endif
             }    
@@ -58,5 +58,5 @@ public sealed class ULazy<T> where T : UnityEngine.Object
     /// <summary>
     /// Returns true if the value has been created and is not null.
     /// </summary>
-    public bool ValueExists => !value.INOC();
+    public bool ValueExists => value != null;
 }

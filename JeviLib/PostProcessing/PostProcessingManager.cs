@@ -31,7 +31,7 @@ public static class PostProcessingManager
     {
         get
         {
-            if (_urpa.INOC())
+            if (_urpa == null)
                 _urpa = UniversalRenderPipeline.asset;
             return _urpa;
         } 
@@ -173,7 +173,7 @@ public static class PostProcessingManager
     /// <param name="postProcessMat"></param>
     public static void AddToStack(Material postProcessMat)
     {
-        if (postProcessMat.INOC()) throw new NullReferenceException("Cannot add a null/collected material to the postprocessing stack.");
+        if (postProcessMat == null) throw new NullReferenceException("Cannot add a null/collected material to the postprocessing stack.");
 
         postProcessFx.Add(postProcessMat);
     }
@@ -200,7 +200,7 @@ public static class PostProcessingManager
     public static void SetGlobalTexture(GlobalTextureDescriptor descriptor)
     {
         if (descriptor.propertyId == default) throw new ArgumentException("Descriptor must have a valid propertyID! Try Shader.ToPropertyID.", nameof(descriptor));
-        if (descriptor.tex.INOC()) throw new ArgumentException("Descriptor must have a valid Texture! Try checking .WasCollected when checking for null and/or using .Persist().", nameof(descriptor));
+        if (descriptor.tex == null) throw new ArgumentException("Descriptor must have a valid Texture! Try checking .WasCollected when checking for null and/or using .Persist().", nameof(descriptor));
 
         foreach(GlobalTextureDescriptor gTex in globalTextures)
         {
@@ -245,7 +245,7 @@ public static class PostProcessingManager
     {
         for (int i = postProcessFx.Count - 1; i >= 0; i--)
         {
-            if (postProcessFx[i].INOC())
+            if (postProcessFx[i] == null)
                 postProcessFx.RemoveAt(i);
         }
 

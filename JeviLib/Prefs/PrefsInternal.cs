@@ -150,7 +150,7 @@ internal static class PrefsInternal
                 //{
 
                 //    field.SetValue(null, val);
-                //    InvokePrefWatchers(pentries.prefHooks[field], val);
+                //    InvokePrefWatchers(pentries.GetHook(field), val);
                 //    entry.Value = val;
                 //    pentries.fieldCategory.SaveToFile(false);
                 //});
@@ -164,7 +164,7 @@ internal static class PrefsInternal
                 pentries.fieldCategory.CreateBool(readableName, ep.color, toSet, val =>
                 {
                     field.SetValue(null, val);
-                    InvokePrefWatchers(pentries.prefHooks[field], val);
+                    InvokePrefWatchers(pentries.GetHook(field), val);
                     entry.Value = val;
                     pentries.MelonPrefsCategory.SaveToFile(false);
                 });
@@ -181,7 +181,7 @@ internal static class PrefsInternal
                 //fieldCategory.CreateColorElement(readableName, toSet, val =>
                 //{
                 //    field.SetValue(null, val);
-                //    InvokePrefWatchers(pentries.prefHooks[field], val);
+                //    InvokePrefWatchers(pentries.GetHook(field), val);
                 //    entry.Value = val;
                 //    pentries.MelonPrefsCategory.SaveToFile(false);
                 //});
@@ -206,7 +206,7 @@ internal static class PrefsInternal
                     JeviLib.Warn("Replacing it with its default value of " + dv);
                     entry.Value = dv.ToString();
                 }
-                object[] parameters = { readableName, ep.color, (dynamic val) => { field.SetValue(null, val); InvokePrefWatchers(pentries.prefHooks[field], val);entry.Value = val.ToString(); pentries.MelonPrefsCategory.SaveToFile(false); } };
+                object[] parameters = { readableName, ep.color, (dynamic val) => { field.SetValue(null, val); InvokePrefWatchers(pentries.GetHook(field), val);entry.Value = val.ToString(); pentries.MelonPrefsCategory.SaveToFile(false); } };
                 field.SetValue(null, toSet);
 
 #if !SELFCONTAINED
@@ -216,7 +216,7 @@ internal static class PrefsInternal
                     pentries.fieldCategory.CreateEnum(readableName, Color.white, toSet, val =>
                     {
                         field.SetValue(null, val);
-                        InvokePrefWatchers(pentries.prefHooks[field], val);
+                        InvokePrefWatchers(pentries.GetHook(field), val);
                         entry.Value = val.ToString();
                         pentries.MelonPrefsCategory.SaveToFile(false);
                     });
@@ -262,7 +262,7 @@ internal static class PrefsInternal
                 pentries.fieldCategory.CreateInt(readableName, Color.white, toSet, (int)rp.inc, (int)rp.low, (int)rp.high, val =>
                 {
                     field.SetValue(null, val);
-                    InvokePrefWatchers(pentries.prefHooks[field], val);
+                    InvokePrefWatchers(pentries.GetHook(field), val);
                     entry.Value = val;
                     pentries.MelonPrefsCategory.SaveToFile(false);
                 });
@@ -277,7 +277,7 @@ internal static class PrefsInternal
                 pentries.fieldCategory.CreateFloat(readableName, Color.white, toSet, rp.inc, rp.low, rp.high, val =>
                 {
                     field.SetValue(null, val);
-                    InvokePrefWatchers(pentries.prefHooks[field], val);
+                    InvokePrefWatchers(pentries.GetHook(field), val);
                     entry.Value = val;
                     pentries.MelonPrefsCategory.SaveToFile(false);
                 });
@@ -432,8 +432,9 @@ internal static class PrefsInternal
     }
 
     // this will only work so long as JeviLib maintains a list of supported field types that are pref-able, because doing this from reflection will require dynamic method creation, lol
-    private static void InvokePrefWatchers<T>(Delegate hook, T value)
+    private static void InvokePrefWatchers<T>(Delegate? hook, T value)
     {
+        if (hook is null) return;
         Action<T> action = (Action<T>)hook;
         action.InvokeSafeSync(value);
     }

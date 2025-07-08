@@ -33,7 +33,7 @@ public static class Tweener
             }
             catch { }
             // check using the equality operator because then it checks if its destroyed.
-            if (tween.CancelWith.INOC() || ptr == IntPtr.Zero)
+            if (tween.CancelWith == null || ptr == IntPtr.Zero)
             {
 #if DEBUG
                 JeviLib.Log($"Cancelling {tween.name}; Its corresponding UnityEngine.Object was destroyed or null.");

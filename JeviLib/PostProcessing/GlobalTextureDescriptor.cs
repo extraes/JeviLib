@@ -26,7 +26,7 @@ public readonly struct GlobalTextureDescriptor
     /// <exception cref="ArgumentNullException">The texture is null</exception>
     public GlobalTextureDescriptor(int propertyId, Texture tex)
     {
-        if (tex.INOC()) throw new ArgumentNullException(nameof(tex));
+        if (tex == null) throw new ArgumentNullException(nameof(tex));
         this.propertyId = propertyId;
         this.tex = tex;
         this.name = tex.name;
@@ -40,12 +40,12 @@ public readonly struct GlobalTextureDescriptor
     /// <exception cref="ArgumentNullException">The texture is null</exception>
     public GlobalTextureDescriptor(string propertyName, Texture tex)
     {
-        if (tex.INOC()) throw new ArgumentNullException(nameof(tex));
+        if (tex == null) throw new ArgumentNullException(nameof(tex));
         this.propertyId = Shader.PropertyToID(propertyName);
         this.tex = tex;
         this.name = tex.name;
     }
 
-    internal bool IsValid => !tex.INOC() && propertyId != 0;
+    internal bool IsValid => tex != null && propertyId != 0;
 }
 

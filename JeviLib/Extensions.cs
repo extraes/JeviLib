@@ -19,6 +19,7 @@ using UnityEngine.Assertions;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using Il2CppSLZ.Marrow;
+using HarmonyLib;
 
 #if !SELFCONTAINED
 using BoneLib;
@@ -215,7 +216,7 @@ public static class Extensions
     public static string GetFullPath(this Transform t)
     {
         // epick
-        if (t.INOC())
+        if (t == null)
             return "";
 
         StringBuilder sb = new();
@@ -429,14 +430,14 @@ public static class Extensions
     }
 
     /// <summary>
-    /// Filters out <see langword="null"/>s from the given <paramref name="sequence"/> using <see cref="INOC(UnityEngine.Object)"/>.
+    /// Filters out <see langword="null"/>s from the given <paramref name="sequence"/> using the unity object equality operator.
     /// </summary>
     /// <typeparam name="T">Any unty type.</typeparam>
     /// <param name="sequence"></param>
     /// <returns></returns>
     public static IEnumerable<T> NoUNull<T>(this IEnumerable<T> sequence) where T : UnityEngine.Object
     {
-        return sequence.Where(o => !o.INOC());
+        return sequence.Where(o => o != null);
     }
 
     /// <summary>
@@ -530,7 +531,7 @@ public static class Extensions
     /// </summary>
     /// <param name="obj">Any Unity object.</param>
     /// <returns></returns>
-    [DebuggerStepThrough]
+    [DebuggerStepThrough, Obsolete("INOC is no longer necessary -- IL2CPPInterop fixed the equality operator.", true)]
     public static bool INOC([NotNullWhen(false)] this UnityEngine.Object? obj)
     {
         if (obj is null || obj.WasCollected) return true;

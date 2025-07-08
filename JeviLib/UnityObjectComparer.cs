@@ -26,8 +26,8 @@ public class UnityObjectComparer<T> : IEqualityComparer<T> where T : UnityEngine
     /// <returns>Whether the two are equal.</returns>
     public bool Equals(T? x, T? y)
     {
-        bool xNull = x.INOC();
-        bool yNull = y.INOC();
+        bool xNull = x == null;
+        bool yNull = y == null;
         bool bothNull = xNull && yNull;
         bool oneNull = xNull || yNull;
         bool nullMismatch = bothNull != oneNull;

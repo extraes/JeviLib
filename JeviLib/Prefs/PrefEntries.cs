@@ -55,4 +55,11 @@ public sealed class PrefEntries
         BoneMenuPage = boneMenuPage;
     }
 #endif
+
+    internal Delegate? GetHook(FieldInfo field)
+    {
+        if (prefHooks.TryGetValue(field, out Delegate? hook))
+            return hook;
+        return null;
+    }
 }

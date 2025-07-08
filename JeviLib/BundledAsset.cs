@@ -39,7 +39,7 @@ public sealed class BundledAsset<T> where T : UnityEngine.Object
     public BundledAsset(AssetBundle bundle, string path, bool hideWhenPersisting = true, bool loadImmediately = false)
     {
 #if DEBUG
-        if (bundle.INOC()) throw new ArgumentNullException(nameof(bundle));
+        if (bundle == null) throw new ArgumentNullException(nameof(bundle));
         if (string.IsNullOrWhiteSpace(path)) throw new ArgumentException("Asset path cannot be null, empty, or only whitespace.", nameof(path));
 #endif
 
@@ -72,8 +72,8 @@ public sealed class BundledAsset<T> where T : UnityEngine.Object
     public void Bind(AssetBundle bundle, bool loadImmediately = false)
     {
 #if DEBUG
-        if (!this.bundle.INOC()) JeviLib.Warn("It's not recommended to live-switch the AssetBundle reference of a bundled asset! Asset path: " + path);
-        if (bundle.INOC()) throw new ArgumentNullException(nameof(bundle));
+        if (this.bundle) JeviLib.Warn("It's not recommended to live-switch the AssetBundle reference of a bundled asset! Asset path: " + path);
+        if (bundle == null) throw new ArgumentNullException(nameof(bundle));
 #endif
 
         this.bundle = bundle;
@@ -90,8 +90,8 @@ public sealed class BundledAsset<T> where T : UnityEngine.Object
     public Task<T> BindAsync(AssetBundle bundle)
     {
 #if DEBUG
-        if (!this.bundle.INOC()) JeviLib.Warn("It's not recommended to live-switch the AssetBundle reference of a bundled asset! Asset path: " + path);
-        if (bundle.INOC()) throw new ArgumentNullException(nameof(bundle));
+        if (this.bundle) JeviLib.Warn("It's not recommended to live-switch the AssetBundle reference of a bundled asset! Asset path: " + path);
+        if (bundle == null) throw new ArgumentNullException(nameof(bundle));
 #endif
 
         this.bundle = bundle;
@@ -106,10 +106,10 @@ public sealed class BundledAsset<T> where T : UnityEngine.Object
     /// <returns>Your loaded asset.</returns>
     public T Get()
     {
-        if (asset.INOC())
+        if (asset == null)
         {
 #if DEBUG
-            if (bundle.INOC()) throw new InvalidOperationException("BundledAsset be associated with an existing assetbundle! You have either failed to bind an AssetBundle to this asset or the provided AssetBundle was collected! Asset path: " + path);
+            if (bundle == null) throw new InvalidOperationException("BundledAsset be associated with an existing assetbundle! You have either failed to bind an AssetBundle to this asset or the provided AssetBundle was collected! Asset path: " + path);
 #endif
 
             asset = bundle.LoadAsset(path).Cast<T>();
@@ -126,10 +126,10 @@ public sealed class BundledAsset<T> where T : UnityEngine.Object
     /// <returns>Your loaded asset.</returns>
     public async Task<T> GetAsync()
     {
-        if (asset.INOC())
+        if (asset == null)
         {
 #if DEBUG
-            if (bundle.INOC()) 
+            if (bundle == null) 
                 throw new InvalidOperationException("BundledAsset be associated with an existing assetbundle! You have either failed to bind an AssetBundle to this asset or the provided AssetBundle was collected! Asset path: " + path);
             if (!GetPaths().Contains(path.ToLower()))
             {
@@ -159,7 +159,7 @@ public sealed class BundledAsset<T> where T : UnityEngine.Object
 #if DEBUG
     string[] GetPaths()
     {
-        if (bundle.INOC())
+        if (bundle == null)
             throw new InvalidOperationException("AssetBundle is null! Cannot retrieve asset paths.");
 
         if (assetPaths.TryGetValue(bundle, out string[]? paths)) return paths;

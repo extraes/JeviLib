@@ -792,7 +792,7 @@ public static class Utilities
     /// <returns>The target transform as designated by <paramref name="childIdxs"/>.</returns>
     public static Transform TraverseHierarchy(Transform transform, byte[] childIdxs)
     {
-        if (transform.INOC()) throw new ArgumentNullException(nameof(transform));
+        if (transform == null) throw new ArgumentNullException(nameof(transform));
 
         Transform ret = transform;
 

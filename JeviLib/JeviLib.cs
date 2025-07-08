@@ -93,22 +93,6 @@ public class JeviLib : MelonMod
     /// </summary>
     public void _OnEarlyInitializeMelon()
     {
-#if DEBUG
-        // launch debugger because, for some inane reason, melonloader doesnt thoroughly test jack shit
-        bool launchDbg = MelonLaunchOptions.Core.IsDebug
-                      && typeof(MelonEnvironment).Assembly.GetName().Version?.ToString() == "0.6.4.0"
-                      && !Utilities.IsPlatformQuest();
-        
-        Log("ML isDbg: " + MelonLaunchOptions.Core.IsDebug);
-        Log("ML ver: " + typeof(MelonEnvironment).Assembly.GetName().Version?.ToString() ?? "null");
-        Log("On Quest: " + Utilities.IsPlatformQuest());
-        Log("Need launch dbgr: " + launchDbg);
-        Log(Debugger.IsAttached);
-        if (launchDbg && !Debugger.IsAttached)
-        {
-            Debugger.Launch();
-        }
-#endif
 
         Stopwatch sw = Stopwatch.StartNew();
         
@@ -283,7 +267,7 @@ public class JeviLib : MelonMod
 #if DEBUG
         Log($"OSWI CALLED: PARAMS: IDX={buildIndex}, NAME={sceneName}");
 #endif
-        if (!Instances.Player_RigManager.INOC()) return;
+        if (Instances.Player_RigManager != null) return;
 
         Waiting.WaitForSceneInit.currSceneIdx = SceneManager.GetActiveScene().buildIndex;
         foreach (IDictionary item in Instances.instanceCachesToClear)
@@ -296,13 +280,13 @@ public class JeviLib : MelonMod
         Stopwatch sw = Stopwatch.StartNew();
 #endif
         // this should obviously never happen, but IL2CPP (and Unity 2021.3.5 i guess) is a whore that never stops sucking
-        if (Instances.NeverCancel.INOC())
+        if (Instances.NeverCancel == null)
             CreateNeverCancel();
 
         // Grab the necessary references when the scene starts. 
         Instances.Player_RigManager =
             GameObject.FindObjectsOfType<Il2CppSLZ.Marrow.RigManager>().FirstOrDefault(r => r.gameObject.scene != default)!;
-        if (Instances.Player_RigManager.INOC())
+        if (Instances.Player_RigManager == null)
             return;
         Instances.Player_BodyVitals =
             GameObject.FindObjectOfType<Il2CppSLZ.Bonelab.BodyVitals>();
